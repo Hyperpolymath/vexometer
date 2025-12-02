@@ -1,0 +1,232 @@
+# SPDX-FileCopyrightText: 2024 Jonathan D.A. Jewell
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Vexometer - GitLab CI/CD Configuration
+# RSR-compliant pipeline with security scanning and compliance checks
+
+stages:
+  - validate
+  - build
+  - test
+  - security
+  - package
+  - deploy
+
+variables:
+  VEXOMETER_BUILD_MODE: "release"
+  # Use Podman instead of Docker (RSR requirement)
+  CONTAINER_RUNTIME: podman
+
+# =============================================================================
+# Templates
+# =============================================================================
+
+.nix-template: &nix-template
+  image: nixos/nix:latest
+  before_script:
+    - nix-env -iA nixpkgs.just nixpkgs.git
+    - echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf
+
+.ada-template: &ada-template
+  image: registry.gitlab.com/gnat/gnat-community:latest
+  before_script:
+    - apt-get update && apt-get install -y just
+
+# =============================================================================
+# Validation Stage
+# =============================================================================
+
+rsr-compliance:
+  stage: validate
+  <<: *nix-template
+  script:
+    - nix develop --command just validate
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+lint:
+  stage: validate
+  <<: *ada-template
+  script:
+    - just lint
+  allow_failure: true
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+spdx-check:
+  stage: validate
+  image: fsfe/reuse:latest
+  script:
+    - reuse lint
+  allow_failure: true
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+# =============================================================================
+# Build Stage
+# =============================================================================
+
+build-debug:
+  stage: build
+  <<: *ada-template
+  variables:
+    VEXOMETER_BUILD_MODE: debug
+  script:
+    - just build
+  artifacts:
+    paths:
+      - bin/
+      - obj/
+    expire_in: 1 day
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+build-release:
+  stage: build
+  <<: *ada-template
+  variables:
+    VEXOMETER_BUILD_MODE: release
+  script:
+    - just release
+  artifacts:
+    paths:
+      - bin/vexometer
+    expire_in: 1 week
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
+
+build-nix:
+  stage: build
+  <<: *nix-template
+  script:
+    - nix build
+  artifacts:
+    paths:
+      - result/
+    expire_in: 1 week
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+# =============================================================================
+# Test Stage
+# =============================================================================
+
+unit-tests:
+  stage: test
+  <<: *ada-template
+  script:
+    - just test
+  dependencies:
+    - build-debug
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+integration-tests:
+  stage: test
+  <<: *nix-template
+  script:
+    - nix develop --command just test
+  dependencies:
+    - build-nix
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+# =============================================================================
+# Security Stage
+# =============================================================================
+
+secret-detection:
+  stage: security
+  image: registry.gitlab.com/gitlab-org/security-products/analyzers/secrets:latest
+  script:
+    - /analyzer run
+  artifacts:
+    reports:
+      secret_detection: gl-secret-detection-report.json
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+dependency-scanning:
+  stage: security
+  <<: *nix-template
+  script:
+    - echo "Dependency scanning for Alire packages"
+    - nix develop --command just security-check
+  allow_failure: true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+# SPARK formal verification (when available)
+spark-prove:
+  stage: security
+  <<: *ada-template
+  script:
+    - gnatprove -P vexometer.gpr --level=2 || true
+  allow_failure: true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+# =============================================================================
+# Package Stage
+# =============================================================================
+
+package-tarball:
+  stage: package
+  <<: *ada-template
+  script:
+    - just dist
+  artifacts:
+    paths:
+      - dist/*.tar.gz
+    expire_in: 1 month
+  rules:
+    - if: '$CI_COMMIT_TAG'
+
+package-container:
+  stage: package
+  image: quay.io/podman/stable
+  script:
+    - podman build -t vexometer:$CI_COMMIT_TAG .
+    - podman save vexometer:$CI_COMMIT_TAG -o vexometer-container.tar
+  artifacts:
+    paths:
+      - vexometer-container.tar
+    expire_in: 1 month
+  rules:
+    - if: '$CI_COMMIT_TAG'
+
+# =============================================================================
+# Deploy Stage (Releases)
+# =============================================================================
+
+release:
+  stage: deploy
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  script:
+    - echo "Creating release $CI_COMMIT_TAG"
+  release:
+    tag_name: $CI_COMMIT_TAG
+    name: "Vexometer $CI_COMMIT_TAG"
+    description: "Release $CI_COMMIT_TAG"
+    assets:
+      links:
+        - name: "Source tarball"
+          url: "$CI_PROJECT_URL/-/archive/$CI_COMMIT_TAG/vexometer-$CI_COMMIT_TAG.tar.gz"
+  rules:
+    - if: '$CI_COMMIT_TAG'
+
+pages:
+  stage: deploy
+  <<: *nix-template
+  script:
+    - nix develop --command just docs-html
+    - mkdir -p public
+    - cp docs/*.html public/
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
