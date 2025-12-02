@@ -1,0 +1,142 @@
+{
+  "category": "Linguistic_Pathology",
+  "description": "Patterns detecting sycophancy, hedge words, corporate speak, and unnecessary repetition",
+  "version": "1.0.0",
+  "patterns": [
+    {
+      "id": "LPS-SYCOPHANCY-001",
+      "name": "Great Question Opener",
+      "regex": "(?i)^\\s*(great|excellent|wonderful|fantastic|good)\\s+question",
+      "severity": "High",
+      "weight": 0.9,
+      "explanation": "Opening with praise for the question is a known sycophancy pattern that adds no value and often feels performative.",
+      "examples": ["Great question!", "Excellent question - ", "That's a wonderful question."]
+    },
+    {
+      "id": "LPS-SYCOPHANCY-002",
+      "name": "Happy To Help",
+      "regex": "(?i)i'?d\\s+be\\s+happy\\s+to|i'?m\\s+happy\\s+to\\s+help",
+      "severity": "High",
+      "weight": 0.8,
+      "explanation": "Corporate cheerfulness that simulates enthusiasm rather than demonstrating competence.",
+      "examples": ["I'd be happy to help!", "I'm happy to assist you with that."]
+    },
+    {
+      "id": "LPS-SYCOPHANCY-003",
+      "name": "Absolutely Affirmation",
+      "regex": "(?i)^\\s*absolutely[!.]|\\babsolutely[!]\\s",
+      "severity": "Medium",
+      "weight": 0.5,
+      "explanation": "Excessive affirmation that often precedes restating the question.",
+      "examples": ["Absolutely!", "Absolutely, I can help with that."]
+    },
+    {
+      "id": "LPS-SYCOPHANCY-004",
+      "name": "Hope This Helps",
+      "regex": "(?i)i\\s+hope\\s+this\\s+helps|hope\\s+that\\s+helps",
+      "severity": "Medium",
+      "weight": 0.5,
+      "explanation": "Closing filler that adds no information and can feel dismissive.",
+      "examples": ["I hope this helps!", "Hope that helps."]
+    },
+    {
+      "id": "LPS-SYCOPHANCY-005",
+      "name": "Let Me Know",
+      "regex": "(?i)let\\s+me\\s+know\\s+if\\s+you\\s+(have|need|want|require)",
+      "severity": "Low",
+      "weight": 0.3,
+      "explanation": "Performative offer of further assistance.",
+      "examples": ["Let me know if you have any questions!", "Let me know if you need anything else."]
+    },
+    {
+      "id": "LPS-SYCOPHANCY-006",
+      "name": "Feel Free To",
+      "regex": "(?i)feel\\s+free\\s+to",
+      "severity": "Low",
+      "weight": 0.3,
+      "explanation": "Permission-granting phrase that can feel condescending.",
+      "examples": ["Feel free to ask if you have questions.", "Feel free to reach out."]
+    },
+    {
+      "id": "LPS-IDENTITY-001",
+      "name": "As An AI",
+      "regex": "(?i)as\\s+an?\\s+(ai|artificial\\s+intelligence)",
+      "severity": "High",
+      "weight": 0.8,
+      "explanation": "Unnecessary self-identification that often precedes refusal or hedging.",
+      "examples": ["As an AI, I don't have personal opinions.", "As an AI language model, I cannot..."]
+    },
+    {
+      "id": "LPS-IDENTITY-002",
+      "name": "Language Model Declaration",
+      "regex": "(?i)as\\s+a\\s+(large\\s+)?language\\s+model",
+      "severity": "High",
+      "weight": 0.8,
+      "explanation": "Technical self-description that disrupts natural conversation flow.",
+      "examples": ["As a large language model, I was trained on...", "As a language model, I don't have access to..."]
+    },
+    {
+      "id": "LPS-HEDGE-001",
+      "name": "Important To Note",
+      "regex": "(?i)it'?s\\s+(important|worth)\\s+(to\\s+)?(note|noting|mentioning)",
+      "severity": "Medium",
+      "weight": 0.6,
+      "explanation": "Hedge phrase that often precedes obvious information or unnecessary caveats.",
+      "examples": ["It's important to note that...", "It's worth mentioning that..."]
+    },
+    {
+      "id": "LPS-HEDGE-002",
+      "name": "Please Note",
+      "regex": "(?i)please\\s+(note|be\\s+aware|keep\\s+in\\s+mind)",
+      "severity": "Medium",
+      "weight": 0.5,
+      "explanation": "Formal hedge that can feel paternalistic.",
+      "examples": ["Please note that this may vary.", "Please be aware that..."]
+    },
+    {
+      "id": "LPS-HEDGE-003",
+      "name": "That Being Said",
+      "regex": "(?i)(that|this)\\s+(being\\s+)?said|having\\s+said\\s+that|with\\s+that\\s+(being\\s+)?said",
+      "severity": "Low",
+      "weight": 0.4,
+      "explanation": "Transitional hedge that often introduces contradiction or caveat.",
+      "examples": ["That being said, there are some exceptions.", "Having said that, you should also consider..."]
+    },
+    {
+      "id": "LPS-HEDGE-004",
+      "name": "However Caveat",
+      "regex": "(?i)however,?\\s+it'?s\\s+(important|worth|also)",
+      "severity": "Medium",
+      "weight": 0.5,
+      "explanation": "Caveat introduction that often precedes unnecessary warnings.",
+      "examples": ["However, it's important to remember...", "However, it's also worth noting..."]
+    },
+    {
+      "id": "LPS-CORPORATE-001",
+      "name": "Leverage",
+      "regex": "(?i)\\bleverage\\b(?!\\s+ratio)",
+      "severity": "Low",
+      "weight": 0.3,
+      "explanation": "Corporate buzzword used when 'use' would suffice.",
+      "examples": ["You can leverage this feature to...", "Leveraging machine learning..."]
+    },
+    {
+      "id": "LPS-CORPORATE-002",
+      "name": "Utilize",
+      "regex": "(?i)\\butilize\\b",
+      "severity": "Low",
+      "weight": 0.2,
+      "explanation": "Unnecessarily formal synonym for 'use'.",
+      "examples": ["You can utilize this method...", "Utilizing the API..."]
+    },
+    {
+      "id": "LPS-CORPORATE-003",
+      "name": "Facilitate",
+      "regex": "(?i)\\bfacilitate\\b",
+      "severity": "Low",
+      "weight": 0.2,
+      "explanation": "Vague corporate verb that obscures meaning.",
+      "examples": ["This will facilitate the process...", "To facilitate communication..."]
+    }
+  ]
+}

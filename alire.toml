@@ -1,0 +1,56 @@
+name = "vexometer"
+version = "0.1.0-dev"
+description = "Irritation Surface Analyser for AI assistants - quantifying the user experience dimensions that benchmarks miss"
+authors = ["Jonathan D.A. Jewell"]
+maintainers = ["jonathan@jewell.dev"]
+maintainers-logins = ["hyperpolymath"]
+licenses = "AGPL-3.0-or-later"
+website = "https://gitlab.com/hyperpolymath/vexometer"
+tags = ["ai", "evaluation", "benchmarks", "ux", "analysis", "llm", "chatbot"]
+long-description = """
+# Vexometer - Irritation Surface Analyser
+
+A rigorous, reproducible tool for quantifying the irritation surface of AI
+assistants, producing standardised metrics that complement existing benchmarks
+(MMLU, HumanEval, etc.) with human experience dimensions.
+
+## Core Metrics
+
+- **Temporal Intrusion Index (TII)**: Unsolicited outputs, flow interruption
+- **Linguistic Pathology Score (LPS)**: Sycophancy, hedge words, corporate speak
+- **Epistemic Failure Rate (EFR)**: Hallucination, miscalibration
+- **Paternalism Quotient (PQ)**: Over-explanation, competence assumptions
+- **Telemetry Anxiety Index (TAI)**: Data collection transparency
+- **Interaction Coherence Score (ICS)**: Context retention, learning from feedback
+
+## Philosophy
+
+The AI assistant market is maturing. Capability is increasingly commoditised.
+Differentiation will come from user experience. Vexometer measures what users
+actually care about but current benchmarks ignore.
+"""
+
+[build-profiles]
+vexometer = "validation"
+
+[[depends-on]]
+gtkada = ">=24.0.0"
+
+[[depends-on]]
+gnatcoll = ">=24.0.0"
+
+[[depends-on]]
+aws = ">=24.0.0"
+
+[gpr-externals]
+VEXOMETER_BUILD_MODE = ["debug", "release", "validation"]
+
+[gpr-set-externals]
+VEXOMETER_BUILD_MODE = "debug"
+
+[[actions]]
+type = "test"
+command = ["alr", "exec", "--", "gnattest", "--harness-dir=tests"]
+
+[[pins]]
+# Pin to stable versions when available
