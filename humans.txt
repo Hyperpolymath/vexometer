@@ -1,0 +1,16 @@
+/* TEAM */
+Lead: Jonathan D.A. Jewell
+Role: Creator and Maintainer
+Location: United Kingdom
+Contact: jonathan@jewell.dev
+GitLab: @hyperpolymath
+
+/* THANKS */
+IndieWeb community
+FOSS movement
+Rhodium Standard Repository framework
+LMSYS Chatbot Arena (inspiration)
+
+/* SITE */
+Standards: RSR, Ada 2022, AGPL-3.0-or-later
+Software: GtkAda, GNAT, Nix

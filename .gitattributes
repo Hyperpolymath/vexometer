@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2024 Jonathan D.A. Jewell
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Auto detect text files and normalise line endings
+* text=auto
+
+# Ada source files
+*.ads text linguist-language=Ada
+*.adb text linguist-language=Ada
+*.gpr text linguist-language=Ada
+
+# Documentation
+*.md text
+*.adoc text
+*.txt text
+
+# Data files
+*.json text
+*.yml text
+*.yaml text
+*.toml text
+
+# Nix
+*.nix text
+
+# Shell
+*.sh text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.gif binary

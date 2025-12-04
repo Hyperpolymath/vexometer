@@ -1,0 +1,52 @@
+// SPDX-FileCopyrightText: 2024 Jonathan D.A. Jewell
+// SPDX-License-Identifier: AGPL-3.0-or-later
+= Contributing to Vexometer
+:toc:
+
+== Tri-Perimeter Contribution Framework (TPCF)
+
+=== Perimeter 1 (Core)
+Maintainers only. Includes:
+
+* Build system (flake.nix, justfile)
+* Core Ada packages
+* Security-critical code
+
+=== Perimeter 2 (Expert)
+Trusted contributors. Includes:
+
+* Pattern definitions
+* API provider implementations
+* Report generators
+
+=== Perimeter 3 (Community)
+Open to all. Includes:
+
+* Documentation improvements
+* Test cases
+* Bug reports
+* Probe suggestions
+
+== How to Contribute
+
+1. Fork the repository
+2. Create a feature branch
+3. Make changes with SPDX headers
+4. Submit merge request
+
+== Code Standards
+
+* Ada 2022 style
+* SPDX headers on all files
+* Tests for new functionality
+* Documentation for public APIs
+
+== Commit Messages
+
+Use conventional commits:
+
+----
+feat: add new probe for brevity testing
+fix: correct regex in sycophancy pattern
+docs: update API documentation
+----
