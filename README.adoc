@@ -1,0 +1,37 @@
+// SPDX-FileCopyrightText: 2024 Jonathan D.A. Jewell
+// SPDX-License-Identifier: AGPL-3.0-or-later
+= Vexometer: Irritation Surface Analyser
+Jonathan D.A. Jewell <jonathan@jewell.dev>
+v0.1.0
+:toc: left
+:icons: font
+
+A rigorous tool for quantifying AI assistant irritation surfaces.
+
+== Overview
+
+Current benchmarks measure capability. Vexometer measures *user experience*.
+
+== Core Metrics
+
+* *TII* - Temporal Intrusion Index
+* *LPS* - Linguistic Pathology Score
+* *EFR* - Epistemic Failure Rate
+* *PQ* - Paternalism Quotient
+* *TAI* - Telemetry Anxiety Index
+* *ICS* - Interaction Coherence Score
+
+Lower ISA = Better UX.
+
+== Quick Start
+
+[source,bash]
+----
+nix develop
+just build
+just run
+----
+
+== License
+
+AGPL-3.0-or-later. See link:LICENSE.txt[LICENSE.txt].
