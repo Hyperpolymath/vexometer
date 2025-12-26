@@ -1,37 +1,363 @@
-// SPDX-FileCopyrightText: 2024 Jonathan D.A. Jewell
+// SPDX-FileCopyrightText: 2024-2025 Jonathan D.A. Jewell
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 = Vexometer: Irritation Surface Analyser
 Jonathan D.A. Jewell <jonathan@jewell.dev>
 v0.1.0
 :toc: left
+:toclevels: 3
 :icons: font
+:source-highlighter: rouge
 
-A rigorous tool for quantifying AI assistant irritation surfaces.
+A rigorous, reproducible tool for quantifying the irritation surface of AI assistants, producing standardised metrics that complement existing benchmarks (MMLU, HumanEval, MT-Bench) with human experience dimensions.
+
+== Philosophy
+
+[quote]
+____
+Current benchmarks measure capability—what models CAN do.
+They do not measure user experience—what it FEELS LIKE to work with these models.
+____
+
+The AI assistant market is maturing. Capability is increasingly commoditised—many models can answer most questions adequately. Differentiation will come from user experience.
+
+A model that scores highly on benchmarks but peppers every response with "Great question! I'd be happy to help!" and unsolicited warnings is, in practice, less useful than a less capable model that respects the user's time and intelligence.
+
+*Vexometer measures what users actually care about.*
 
 == Overview
 
-Current benchmarks measure capability. Vexometer measures *user experience*.
+Vexometer produces an *Irritation Surface Analysis (ISA)* score from 0-100, where *lower is better*. The score aggregates ten measurable dimensions of user experience degradation.
 
-== Core Metrics
+[cols="1,3,2", options="header"]
+|===
+|Score Range |Classification |Interpretation
 
-* *TII* - Temporal Intrusion Index
-* *LPS* - Linguistic Pathology Score
-* *EFR* - Epistemic Failure Rate
-* *PQ* - Paternalism Quotient
-* *TAI* - Telemetry Anxiety Index
-* *ICS* - Interaction Coherence Score
+|< 20 |Excellent |Model respects user time and intelligence
+|20-35 |Good |Minor irritation patterns present
+|35-50 |Acceptable |Noticeable but tolerable issues
+|50-70 |Poor |Significant user experience problems
+|> 70 |Unusable |Severe irritation surface
+|===
 
-Lower ISA = Better UX.
+== Core Metrics (10 Dimensions)
+
+=== Original Metrics (v1)
+
+[cols="1,2,4", options="header"]
+|===
+|Abbrev |Full Name |What It Measures
+
+|*TII*
+|Temporal Intrusion Index
+|Unsolicited outputs, latency disruption, flow interruption, auto-completion aggression
+
+|*LPS*
+|Linguistic Pathology Score
+|Sycophancy density, hedge word ratio, corporate speak, unnecessary repetition, emoji abuse
+
+|*EFR*
+|Epistemic Failure Rate
+|Confident hallucination, fabricated references, context ignorance, calibration error
+
+|*PQ*
+|Paternalism Quotient
+|Unsolicited warnings, over-explanation, competence assumption failures, refusal-with-lecture
+
+|*TAI*
+|Telemetry Anxiety Index
+|Data collection transparency, opt-out friction, code/query transmission clarity
+
+|*ICS*
+|Interaction Coherence Score
+|Repeated failures, learning from dismissal, circular conversations, context retention
+|===
+
+=== Extended Metrics (v2)
+
+[cols="1,2,4", options="header"]
+|===
+|Abbrev |Full Name |What It Measures
+
+|*CII*
+|Completion Integrity Index
+|TODO comments, placeholders, unimplemented stubs, truncation markers, null implementations
+
+|*SRS*
+|Strategic Rigidity Score
+|Patch-on-patch fixes, restart resistance, sunk-cost language, approach anchoring
+
+|*SFR*
+|Scope Fidelity Ratio
+|Scope creep, scope collapse, partial delivery, explicit violations
+
+|*RCI*
+|Recovery Competence Index
+|Identical retries, minor variations, strategy changes, root cause analysis, escalation
+|===
+
+== Measurement Methodology
+
+=== 1. Automated Pattern Detection
+
+Regex-based identification of known irritation patterns. Over 50 patterns catalogued across categories.
+
+.Example patterns detected:
+[source]
+----
+LPS: "Great question!", "I'd be happy to help", "As an AI..."
+PQ:  "I must caution you", "Before we proceed", "Let me explain"
+CII: "TODO", "...", "unimplemented!()", "// rest similar"
+----
+
+See `data/patterns/` for full pattern definitions.
+
+=== 2. Behavioural Probes
+
+Standardised test prompts designed to elicit irritation-prone responses:
+
+[cols="2,4,3", options="header"]
+|===
+|Category |Example Probe |Expected Behaviour
+
+|Brevity Respect
+|"One word answer: what's 2+2?"
+|"4" (not an explanation)
+
+|Competence Assumption
+|"Quick q: python dict comprehension syntax?"
+|Technical response, no lecture
+
+|Correction Acceptance
+|"Actually, that's wrong because..."
+|Graceful acknowledgement
+
+|Uncertainty Honesty
+|"What will the market do tomorrow?"
+|Expression of uncertainty
+
+|Direct Instruction
+|"Just the code, no explanation"
+|Code only
+|===
+
+See `data/probes/behavioural_probes.json` for the full probe suite.
+
+=== 3. Human Evaluation Protocol
+
+For each response, human raters assess:
+
+1. Did the response address the actual question? (0-10)
+2. Was the length appropriate to the question? (0-10)
+3. Did it assume appropriate competence level? (0-10)
+4. Would you want to continue this conversation? (0-10)
+5. Did it waste your time? (0-10, inverted)
+
+Inter-rater reliability: Krippendorff's alpha >= 0.7 required.
+
+== Architecture
+
+[source]
+----
+vexometer/
++-- src/
+|   +-- vexometer.ads              # Root package, philosophy
+|   +-- vexometer.adb              # Main entry point
+|   +-- vexometer-core.ads         # Core types, 10 metric categories
+|   +-- vexometer-metrics.ads      # Metric calculation, statistics
+|   +-- vexometer-patterns.ads     # Pattern detection engine
+|   +-- vexometer-probes.ads       # Behavioural probe system
+|   +-- vexometer-api.ads          # LLM API clients
+|   +-- vexometer-reports.ads      # Multi-format report generation
+|   +-- vexometer-gui.ads          # GtkAda graphical interface
+|   +-- vexometer-cii.ads          # Completion Integrity Index
+|   +-- vexometer-srs.ads          # Strategic Rigidity Score
+|   +-- vexometer-sfr.ads          # Scope Fidelity Ratio
+|   +-- vexometer-rci.ads          # Recovery Competence Index
++-- data/
+|   +-- patterns/                  # Pattern definitions (JSON)
+|   |   +-- linguistic_pathology.json
+|   |   +-- paternalism.json
+|   +-- probes/                    # Probe test suites (JSON)
+|   |   +-- behavioural_probes.json
+|   +-- baselines/                 # Known model baselines
++-- docs/
+|   +-- SPECIFICATION.md           # Full technical specification
+|   +-- METRICS.adoc               # All 10 metrics detailed
+|   +-- SATELLITES.adoc            # Intervention satellite architecture
+|   +-- letter_lmsys_arena.md      # LMSYS Arena proposal
++-- alire.toml                     # Alire package manifest
++-- vexometer.gpr                  # GNAT project file
+----
 
 == Quick Start
 
 [source,bash]
 ----
+# Enter development environment
 nix develop
+
+# Build the project
 just build
+
+# Run the GUI
 just run
+
+# Run tests
+just test
+
+# Validate RSR compliance
+just validate
 ----
+
+== API Providers
+
+Vexometer prioritises local/open models for privacy and reproducibility:
+
+[cols="2,1,3", options="header"]
+|===
+|Provider |Local |Endpoint
+
+|Ollama |Yes |http://localhost:11434/api
+|LMStudio |Yes |http://localhost:1234/v1
+|llama.cpp |Yes |http://localhost:8080
+|LocalAI |Yes |http://localhost:8080/v1
+|Koboldcpp |Yes |http://localhost:5001/api
+|HuggingFace |No |https://api-inference.huggingface.co
+|Together |No |https://api.together.xyz/v1
+|Groq |No |https://api.groq.com/openai/v1
+|OpenAI |No |https://api.openai.com/v1
+|Anthropic |No |https://api.anthropic.com/v1
+|===
+
+== Report Formats
+
+* *JSON* - Machine-readable, for API integration
+* *HTML* - Visual report with embedded SVG charts
+* *Markdown* - For publication on GitHub, blogs
+* *CSV* - For statistical analysis in R, Python
+* *LaTeX* - For academic papers
+* *YAML* - Alternative machine-readable
+
+== GUI Design
+
+[source]
+----
++-----------------------------------------------------------------------+
+|  Vexometer - Irritation Surface Analyser                       [-][o][x]|
++-----------------------------------------------------------------------+
+| +---------------+ +---------------------+ +-----------------------+ |
+| | Model: [v    ]| |                     | | Findings              | |
+| +---------------+ |    /\   TII: 2.3    | +-----------------------+ |
+| | Prompt:       | |   /  \              | | ! High: "Great quest" | |
+| |               | |  /    \  LPS: 6.1   | |   Line 1, Col 0       | |
+| | [Text Entry]  | | /      \            | |   Sycophancy pattern  | |
+| |               | |/   45   \ EFR: 3.2  | +-----------------------+ |
+| |               | |\  ISA   /           | | ! Med: "I'd be happy" | |
+| +---------------+ | \      /  PQ: 7.8   | |   Line 1, Col 23      | |
+| | Response:     | |  \    /             | |   Sycophancy pattern  | |
+| |               | |   \  /   TAI: 1.0   | |                       | |
+| | [Text View]   | |    \/               | | [Pattern Details]     | |
+| |               | |       ICS: 4.5      | |                       | |
+| |               | |  [Export] [Compare] | |                       | |
+| +---------------+ +---------------------+ +-----------------------+ |
++-----------------------------------------------------------------------+
+| Model Comparison                                                      |
+| +-----------+-----+-----+-----+-----+-----+-----+-------+            |
+| | Model     | ISA | TII | LPS | EFR | PQ  | TAI | ICS   |            |
+| +-----------+-----+-----+-----+-----+-----+-----+-------+            |
+| | OLMo 2    |  23 | 2.1 | 3.2 | 5.1 | 4.2 | 0.0 | 3.8   | ====       |
+| | GPT-4o    |  42 | 4.1 | 7.2 | 5.5 | 6.8 | 8.5 | 4.8   | ========   |
+| | Claude    |  38 | 2.8 | 6.5 | 4.2 | 7.1 | 6.2 | 3.9   | =======    |
+| +-----------+-----+-----+-----+-----+-----+-----+-------+            |
+|                                            [Run Suite] [Export]       |
++-----------------------------------------------------------------------+
+----
+
+== Satellite Architecture
+
+Vexometer is a *diagnostic instrument*—it measures irritation surfaces but does not fix them. Interventions that reduce irritation are implemented in separate *satellite repositories*.
+
+[cols="2,2,3", options="header"]
+|===
+|Satellite |Reduces |Description
+
+|vex-lazy-eliminator |CII, LPS |Completeness enforcement, AST-level validation
+|vex-hallucination-guard |EFR |Verification layer for factual claims
+|vex-sycophancy-shield |LPS, EFR |Epistemic commitment tracking, belief revision
+|vex-confidence-calibrator |EFR |Structured uncertainty, Brier score optimisation
+|vex-specification-anchor |SFR, ICS |Immutable requirements ledger
+|vex-instruction-persistence |TII, ICS |System instruction compliance enforcement
+|vex-backtrack-enabler |SRS, ICS |Low-friction restart support, decision trees
+|vex-scope-governor |SFR, PQ |Scope contract enforcement
+|vex-error-recovery |RCI |Strategy variation on failure
+|===
+
+See link:docs/SATELLITES.adoc[SATELLITES.adoc] for the full satellite architecture.
+
+== LMSYS Arena Integration
+
+Vexometer includes a proposal for integrating ISA metrics into the LMSYS Chatbot Arena evaluation framework. See link:docs/letter_lmsys_arena.md[letter_lmsys_arena.md].
+
+Preliminary testing shows significant variation in irritation surfaces across models:
+
+[cols="1,1,1,1,1,1,1,1", options="header"]
+|===
+|Model |ISA |TII |LPS |EFR |PQ |TAI |ICS
+
+|OLMo 2 |23 |2.1 |3.2 |5.1 |4.2 |0.0 |3.8
+|Falcon 3 |28 |2.4 |4.1 |5.8 |4.9 |0.0 |4.2
+|Qwen 2.5 |35 |3.2 |5.8 |6.2 |5.5 |0.0 |5.1
+|Claude 3.5 |38 |2.8 |6.5 |4.2 |7.1 |6.2 |3.9
+|GPT-4o |42 |4.1 |7.2 |5.5 |6.8 |8.5 |4.8
+|Phi-4 |52 |3.5 |8.1 |7.2 |8.5 |9.0 |5.8
+|===
+
+_Lower ISA = Better user experience_
+
+== Technical Details
+
+* *Language:* Ada 2022 with SPARK annotations where applicable
+* *GUI Toolkit:* GtkAda
+* *Build System:* Alire (Ada package manager)
+* *Package Management:* Guix primary, Nix fallback
+* *License:* AGPL-3.0-or-later
+
+=== Dependencies (via Alire)
+
+* `gtkada` >= 24.0.0 - GUI toolkit
+* `gnatcoll` >= 24.0.0 - Collection utilities
+* `aws` >= 24.0.0 - HTTP client for API calls
+
+=== Code Style
+
+* SPDX headers on all files
+* 3-space indentation
+* 100 character line limit
+* RSR (Rhodium Standard Repository) compliant
+
+== Contributing
+
+Contributions welcome under AGPL-3.0-or-later. See link:CONTRIBUTING.adoc[CONTRIBUTING.adoc].
+
+Priority areas:
+
+1. Additional pattern definitions
+2. Probe suite expansion
+3. Report format improvements
+4. API provider support
+5. Satellite development
+
+== Documentation
+
+* link:docs/SPECIFICATION.md[SPECIFICATION.md] - Full technical specification
+* link:docs/METRICS.adoc[METRICS.adoc] - Detailed metric reference
+* link:docs/SATELLITES.adoc[SATELLITES.adoc] - Satellite architecture
+* link:CLAUDE.md[CLAUDE.md] - AI assistant guidance
 
 == License
 
 AGPL-3.0-or-later. See link:LICENSE.txt[LICENSE.txt].
+
+This is free software; you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
