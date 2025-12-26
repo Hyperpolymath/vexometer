@@ -1,0 +1,379 @@
+// SPDX-FileCopyrightText: 2024-2025 Jonathan D.A. Jewell
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+= Vexometer Roadmap
+Jonathan D.A. Jewell <jonathan@jewell.dev>
+v0.1.0
+:toc: left
+:toclevels: 3
+:icons: font
+:source-highlighter: rouge
+
+Development roadmap for Vexometer, the Irritation Surface Analyser.
+
+== Current State (v0.1.0)
+
+=== Completed Design Work
+
+[cols="1,3,1", options="header"]
+|===
+|Component |Description |Status
+
+|*Core Types*
+|10 metric categories, ISA calculation, findings, model profiles
+|Designed
+
+|*Pattern Engine*
+|Regex-based pattern detection, pattern database, heuristic analysers
+|Designed
+
+|*Probe System*
+|Behavioural probe framework, 14 standardised probes, probe suite runner
+|Designed
+
+|*API Clients*
+|Multi-provider support (Ollama, OpenAI, Anthropic, etc.), batch evaluation
+|Designed
+
+|*GUI*
+|GtkAda interface with radar charts, findings panel, model comparison table
+|Designed
+
+|*Reports*
+|JSON, HTML, Markdown, CSV, LaTeX, YAML export formats
+|Designed
+
+|*Extended Metrics*
+|CII, SRS, SFR, RCI specifications
+|Designed
+
+|*Satellite Architecture*
+|Integration protocol, efficacy validation, 10 satellite specifications
+|Designed
+|===
+
+=== Pattern & Probe Data
+
+[cols="2,1,2", options="header"]
+|===
+|Data File |Items |Categories
+
+|`linguistic_pathology.json` |16 patterns |Sycophancy, identity, hedge, corporate
+|`paternalism.json` |12 patterns |Warning, lecture, competence, refusal
+|`behavioural_probes.json` |14 probes |Brevity, competence, sycophancy, constraint, uncertainty, direct
+|===
+
+=== Documentation
+
+* link:docs/SPECIFICATION.md[SPECIFICATION.md] - Full technical specification
+* link:docs/METRICS.adoc[METRICS.adoc] - All 10 metrics with calculation details
+* link:docs/SATELLITES.adoc[SATELLITES.adoc] - Satellite architecture and integration protocol
+* link:docs/letter_lmsys_arena.md[letter_lmsys_arena.md] - LMSYS Arena proposal letter
+
+== Phase 1: Core Implementation
+
+=== Milestone 1.1: Pattern Engine
+
+[cols="1,4,1", options="header"]
+|===
+|Priority |Task |Effort
+
+|P0 |Implement `Vexometer.Patterns` package body |Medium
+|P0 |Compile and load pattern JSON files |Low
+|P0 |Implement pattern matching with GNAT.Regpat |Medium
+|P1 |Implement heuristic analysers (repetition, verbosity, competence) |High
+|P1 |Add pattern confidence scoring |Medium
+|P2 |Implement context-aware pattern weighting |High
+|===
+
+=== Milestone 1.2: Core Types & ISA Calculation
+
+[cols="1,4,1", options="header"]
+|===
+|Priority |Task |Effort
+
+|P0 |Implement `Vexometer.Core` package body |Medium
+|P0 |Implement `Calculate_ISA` function |Low
+|P0 |Implement `Calculate_Category_Scores` function |Low
+|P1 |Implement `Aggregate_Profile` for multi-response analysis |Medium
+|P1 |Add statistical functions (mean, std dev, median) |Low
+|===
+
+=== Milestone 1.3: Probe System
+
+[cols="1,4,1", options="header"]
+|===
+|Priority |Task |Effort
+
+|P0 |Implement `Vexometer.Probes` package body |Medium
+|P0 |Load probe definitions from JSON |Low
+|P0 |Implement probe result scoring |Medium
+|P1 |Implement trait detection from responses |High
+|P1 |Add multi-turn probe support for context testing |Medium
+|===
+
+=== Milestone 1.4: Extended Metrics
+
+[cols="1,4,1", options="header"]
+|===
+|Priority |Task |Effort
+
+|P0 |Implement `Vexometer.CII` - Completion Integrity Index |Medium
+|P1 |Implement `Vexometer.SRS` - Strategic Rigidity Score |High
+|P1 |Implement `Vexometer.SFR` - Scope Fidelity Ratio |High
+|P1 |Implement `Vexometer.RCI` - Recovery Competence Index |High
+|P2 |Add language-aware CII detection (tree-sitter integration) |Very High
+|===
+
+== Phase 2: API & Automation
+
+=== Milestone 2.1: API Clients
+
+[cols="1,4,1", options="header"]
+|===
+|Priority |Task |Effort
+
+|P0 |Implement Ollama client (local-first priority) |Medium
+|P0 |Implement OpenAI-compatible client (LMStudio, llama.cpp) |Low
+|P1 |Implement Anthropic client |Medium
+|P1 |Implement HuggingFace Inference API client |Medium
+|P2 |Implement Together, Groq clients |Low
+|P2 |Add retry logic with exponential backoff |Low
+|===
+
+=== Milestone 2.2: Batch Evaluation
+
+[cols="1,4,1", options="header"]
+|===
+|Priority |Task |Effort
+
+|P0 |Implement `Run_Probe_Suite` procedure |Medium
+|P0 |Add progress callback support |Low
+|P1 |Implement `Compare_Models` for multi-model comparison |Medium
+|P1 |Add result caching for reproducibility |Medium
+|P2 |Implement parallel API calls (rate-limit aware) |High
+|===
+
+=== Milestone 2.3: Report Generation
+
+[cols="1,4,1", options="header"]
+|===
+|Priority |Task |Effort
+
+|P0 |Implement JSON report generation |Low
+|P0 |Implement Markdown report generation |Low
+|P1 |Implement HTML report with embedded SVG charts |High
+|P1 |Implement CSV export |Low
+|P2 |Implement LaTeX report generation |Medium
+|P2 |Implement LMSYS Arena submission format |Medium
+|===
+
+== Phase 3: GUI Implementation
+
+=== Milestone 3.1: Basic GUI
+
+[cols="1,4,1", options="header"]
+|===
+|Priority |Task |Effort
+
+|P0 |Implement main window layout with GtkAda |High
+|P0 |Implement model selection dropdown |Low
+|P0 |Implement prompt/response text views |Medium
+|P0 |Implement analyse button with pattern detection |Medium
+|P1 |Implement findings list with severity highlighting |Medium
+|===
+
+=== Milestone 3.2: Visualisation
+
+[cols="1,4,1", options="header"]
+|===
+|Priority |Task |Effort
+
+|P0 |Implement radar chart drawing with Cairo |High
+|P0 |Implement ISA gauge display |Medium
+|P1 |Implement category score labels |Low
+|P1 |Implement colour-coded severity display |Low
+|P2 |Add chart animation |Medium
+|===
+
+=== Milestone 3.3: Model Comparison
+
+[cols="1,4,1", options="header"]
+|===
+|Priority |Task |Effort
+
+|P0 |Implement comparison table with TreeView |Medium
+|P0 |Implement Run Suite button |Medium
+|P1 |Implement export functionality |Low
+|P1 |Add bar chart visualisation in table |Medium
+|P2 |Implement model profile persistence |Medium
+|===
+
+== Phase 4: Satellite Ecosystem
+
+=== Milestone 4.1: Trace Format
+
+[cols="1,4,1", options="header"]
+|===
+|Priority |Task |Effort
+
+|P0 |Define `vexometer-trace-v1` JSON schema |Low
+|P0 |Implement trace collection command |Medium
+|P1 |Implement trace comparison command |Medium
+|P1 |Implement efficacy calculation from traces |Medium
+|===
+
+=== Milestone 4.2: First Satellite (vex-lazy-eliminator)
+
+[cols="1,4,1", options="header"]
+|===
+|Priority |Task |Effort
+
+|P0 |Create satellite repository structure |Low
+|P0 |Implement CII-based completeness detection (Rust) |High
+|P1 |Add tree-sitter integration for AST analysis |Very High
+|P1 |Implement intervention API |Medium
+|P2 |Collect before/after traces |Medium
+|P2 |Publish efficacy report |Low
+|===
+
+=== Milestone 4.3: Additional Satellites
+
+[cols="1,3,2,1", options="header"]
+|===
+|Priority |Satellite |Description |Effort
+
+|P1 |vex-hallucination-guard |Verification layer for factual claims |Very High
+|P1 |vex-sycophancy-shield |Epistemic commitment tracking |Very High
+|P2 |vex-confidence-calibrator |Structured uncertainty |High
+|P2 |vex-specification-anchor |Immutable requirements ledger |High
+|P2 |vex-instruction-persistence |System instruction compliance |Medium
+|P3 |vex-backtrack-enabler |Low-friction restart support |High
+|P3 |vex-scope-governor |Scope contract enforcement |Medium
+|P3 |vex-error-recovery |Strategy variation on failure |Medium
+|===
+
+== Phase 5: Community & Validation
+
+=== Milestone 5.1: Pattern Expansion
+
+[cols="1,4,1", options="header"]
+|===
+|Priority |Task |Effort
+
+|P0 |Add patterns for EFR (hallucination markers) |Medium
+|P0 |Add patterns for TII (temporal intrusion) |Medium
+|P1 |Add patterns for ICS (coherence failures) |High
+|P1 |Crowdsource pattern submissions |Ongoing
+|P2 |Validate patterns against user feedback datasets |High
+|===
+
+=== Milestone 5.2: Probe Suite Expansion
+
+[cols="1,4,1", options="header"]
+|===
+|Priority |Task |Effort
+
+|P0 |Expand probe suite to 50+ probes |Medium
+|P1 |Add multi-turn probes for context testing |High
+|P1 |Add domain-specific probe sets (code, math, writing) |High
+|P2 |Create probe contribution guidelines |Low
+|===
+
+=== Milestone 5.3: LMSYS Arena Integration
+
+[cols="1,4,1", options="header"]
+|===
+|Priority |Task |Effort
+
+|P1 |Finalise LMSYS proposal letter |Low
+|P1 |Submit proposal to LMSYS team |Low
+|P2 |Collaborate on validation methodology |High
+|P2 |Provide API for Arena integration |High
+|P3 |Joint publication on ISA methodology |Very High
+|===
+
+=== Milestone 5.4: Academic Publication
+
+[cols="1,4,1", options="header"]
+|===
+|Priority |Task |Effort
+
+|P2 |Write methodology paper |Very High
+|P2 |Collect validation data (user studies) |Very High
+|P3 |Submit to NeurIPS, ACL, or CHI |Low
+|P3 |Release benchmark dataset |High
+|===
+
+== Technical Debt & Quality
+
+=== Ongoing Tasks
+
+[cols="1,4,1", options="header"]
+|===
+|Priority |Task |Effort
+
+|P0 |Maintain RSR compliance |Ongoing
+|P0 |Ensure SPDX headers on all files |Ongoing
+|P1 |Add SPARK annotations for critical paths |High
+|P1 |Achieve >80% test coverage |High
+|P2 |Add CI/CD pipeline (GitLab CI) |Medium
+|P2 |Add Nix/Guix build definitions |Medium
+|===
+
+== Version Targets
+
+=== v0.2.0 - Core Functional
+
+* Pattern engine implementation complete
+* Core ISA calculation working
+* Probe system functional
+* JSON/Markdown reports
+
+=== v0.3.0 - API Integration
+
+* Ollama client working
+* OpenAI-compatible client working
+* Batch evaluation functional
+* CLI for automated testing
+
+=== v0.4.0 - GUI Release
+
+* GtkAda GUI functional
+* Radar chart visualisation
+* Model comparison table
+* Export functionality
+
+=== v0.5.0 - Extended Metrics
+
+* CII implementation complete
+* SRS implementation complete
+* SFR implementation complete
+* RCI implementation complete
+
+=== v1.0.0 - Production Ready
+
+* All metrics implemented and validated
+* Pattern database validated
+* Probe suite finalised
+* Documentation complete
+* First satellite released
+
+== Contributing
+
+Contributions welcome in all areas. See link:CONTRIBUTING.adoc[CONTRIBUTING.adoc] for guidelines.
+
+*High-impact contribution areas:*
+
+1. Pattern definitions for under-represented categories
+2. Behavioural probe design
+3. API provider implementations
+4. Satellite development
+5. Validation studies with real user feedback
+
+== See Also
+
+* link:README.adoc[README.adoc] - Project overview
+* link:docs/SPECIFICATION.md[SPECIFICATION.md] - Technical specification
+* link:docs/METRICS.adoc[METRICS.adoc] - Metric definitions
+* link:docs/SATELLITES.adoc[SATELLITES.adoc] - Satellite architecture
