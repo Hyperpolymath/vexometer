@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MPL-2.0
 name: Quality Gates
 permissions:
+  actions: read
   contents: read
 on:
   pull_request:
