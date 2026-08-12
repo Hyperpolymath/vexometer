@@ -1,5 +1,5 @@
 ; SPDX-License-Identifier: MPL-2.0
-;; guix.scm — GNU Guix package definition for vexometer
+;; guix.scm — GNU Guix package definition for squisher-corpus
 ;; Usage: guix shell -f guix.scm
 
 (use-modules (guix packages)
@@ -7,7 +7,7 @@
              (guix licenses))
 
 (package
-  (name "vexometer")
+  (name "squisher-corpus")
   (version "0.1.0")
   (source #f)
   (build-system gnu-build-system)
