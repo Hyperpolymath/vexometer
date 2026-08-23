@@ -34,7 +34,6 @@ rsr-compliance:
   stage: validate
   !!merge <<: *nix-template
   script:
-    - nix develop --command just validate
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
@@ -89,7 +88,6 @@ build-nix:
   stage: build
   !!merge <<: *nix-template
   script:
-    - nix build
   artifacts:
     paths:
       - result/
@@ -113,7 +111,6 @@ integration-tests:
   stage: test
   !!merge <<: *nix-template
   script:
-    - nix develop --command just test
   dependencies:
     - build-nix
   rules:
@@ -136,7 +133,6 @@ dependency-scanning:
   !!merge <<: *nix-template
   script:
     - echo "Dependency scanning for Alire packages"
-    - nix develop --command just security-check
   allow_failure: true
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
@@ -197,7 +193,6 @@ pages:
   stage: deploy
   !!merge <<: *nix-template
   script:
-    - nix develop --command just docs-html
     - mkdir -p public
     - cp docs/*.html public/
   artifacts:
