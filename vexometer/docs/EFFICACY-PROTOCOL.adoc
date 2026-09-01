@@ -521,14 +521,26 @@ question against link:METRICS.adoc[METRICS.adoc].
 
 _Non-normative. The protocol above stands independently of this section._
 
-The frontier-record design was informed by a published Anthropic figure
-titled "Iterative improvement against ten alignment failures", which
-plots safety gap closed (%) against methods tried, in order, across ten
-failure modes, with a best-method-so-far step function and explicit
-markers for methods *rejected because they hurt capability*. Provenance
-has not been independently verified beyond the figure itself; it is cited
-here as design inspiration, not as evidence, and deliberately has no
-entry in link:CITATIONS.adoc[CITATIONS.adoc].
+The frontier-record design was informed by Figure 3 of an Anthropic
+paper, since verified against the primary source:
+
+* Chen Yueh-Han, Jiaxin Wen, and Jan Hendrik Kirchner, _Automated
+  Researchers Can Reliably Mitigate Alignment Failures_. Anthropic
+  Fellows Program / Anthropic / UC Berkeley, announced 2026-08-28.
+* Announcement: https://alignment.anthropic.com/2026/automated-alignment-researchers/
+* Paper: https://www-cdn.anthropic.com/7b1c44894e980876479947dcdd40716278aeeffd/automated-alignment-researchers-august-2026.pdf
+
+(link:CITATIONS.adoc[CITATIONS.adoc] is this project's how-to-cite-ISA
+guide, not a reference list, so the reference lives here.)
+
+Figure 3, "AARs reliably hill-climb every alignment failure", plots for
+each of ten alignment failures the geometric-mean *headroom closed* (%)
+on that failure's benchmarks, for every proposed method in chronological
+order, with a best-valid-method-so-far step line, a star on the winning
+method, and crosses for methods *filtered out for degrading a capability
+benchmark*. An earlier draft of this appendix described the figure from
+an unattributed reproduction; the description and the numbers below have
+since been checked against the paper itself.
 
 Two ideas were taken from it.
 
@@ -541,19 +553,41 @@ the acceptance rule and the `reject_*` verdicts exist to close that gap.
 a final number makes the shape of the search legible -- fast convergence,
 late breakthrough, or persistent entanglement.
 
-The figure's reported outcomes, offered only as weak external support for
-the Search Budget Tiers hypothesis: the two dimensions closest to ISA's
-LPS and EFR resisted intervention hardest (sycophancy ~26% of gap closed
-after 200+ methods; hallucination ~40%; concealing uncertainty ~39%),
-while the most mechanically specifiable dimension converged fastest
-(reward hacking ~96% in ~40 methods). Attempt budgets varied by roughly
-5x across dimensions.
+The source's rejection rules are worth stating precisely, since this
+protocol's machinery is their analogue. A method is disqualified,
+whatever its safety score, if the trained model's 95% confidence
+interval on any capability benchmark falls entirely below the base
+model's; training on benchmark or evaluation data is forbidden; and so
+is distilling from stronger models. The first maps to `capability_ok`.
+The second's analogue is that a satellite must never be tuned against
+the scenario set it is scored on -- the content-addressed `scenario_set`
+makes that auditable, though a held-out scenario set does not yet exist
+and is future work. The third has no satellite analogue yet; it is noted
+here for when satellites start delegating to models.
+
+The figure's reported outcomes (its own panel labels; n = methods
+proposed), offered as weak external support for the Search Budget Tiers
+hypothesis: the two dimensions closest to ISA's LPS and EFR resisted
+intervention hardest -- sycophancy closed 26% of headroom in 221
+methods, hallucination 40% in 200, concealing uncertainty 39% in 188 --
+while the most mechanically specifiable dimension converged fastest:
+reward hacking closed 96% in 44 methods. Attempt budgets spanned n = 44
+to n = 221 across the ten failures, almost exactly the ~5x spread the
+tiers assume.
 
 This is suggestive, not transferable. The measurements are against a
 different baseline, on a different construct, by a different method. It
 is offered as a reason to *expect* uneven search depth across ISA's ten
 metrics -- and to build the instrument that measures it -- not as a
 prediction of what ISA will find.
+
+One further result motivates keeping frontier records machine-readable.
+In the paper's Section 6, an automated researcher (Claude Sonnet 5)
+post-trained an early Claude Opus 4.8 checkpoint to near its released
+alignment scores with about 2,400 training examples. The plausible
+future consumer of a frontier record is another automated searcher, not
+only a human reader -- an argument for strict formats now, while the
+records are still cheap to standardise.
 
 == See Also
 
