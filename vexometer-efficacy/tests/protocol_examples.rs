@@ -390,6 +390,28 @@ fn lift_rejects_non_v1_input() {
 }
 
 #[test]
+fn lift_rejects_v1_metric_smuggling_v2_evidence() {
+    let mut doc = v1_example();
+    doc["metrics"]["CII"]["baseline"] = serde_json::json!(0.31);
+    let err = lift_v1(&doc).unwrap_err();
+    assert!(
+        err.to_string().contains("ruling e2") && err.to_string().contains("baseline"),
+        "expected a pre-existing v2 evidence key to be refused at lift time, got: {err}"
+    );
+}
+
+#[test]
+fn lift_rejects_v1_report_with_unmapped_top_level_key() {
+    let mut doc = v1_example();
+    doc["verdict"] = serde_json::json!("accept");
+    let err = lift_v1(&doc).unwrap_err();
+    assert!(
+        err.to_string().contains("ruling e2") && err.to_string().contains("verdict"),
+        "expected a key outside the v1 mapping table to be refused, got: {err}"
+    );
+}
+
+#[test]
 fn native_report_cannot_claim_unverified() {
     let mut doc = efficacy_example();
     doc["verdict"] = serde_json::json!("unverified");

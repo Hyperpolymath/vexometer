@@ -677,6 +677,27 @@ pub fn lift_v1(doc: &serde_json::Value) -> Result<serde_json::Value, EfficacyErr
         }
     }
 
+    // The lift domain is exactly the protocol's v1 mapping table. A key
+    // outside it either collides with a v2 slot the lift must control
+    // (verdict, capability, ...) or would be dropped silently -- both
+    // break the carried-verbatim promise, so refuse instead.
+    const V1_FIELDS: [&str; 7] = [
+        "version",
+        "metrics",
+        "satellite",
+        "evaluation_date",
+        "sample_size",
+        "methodology",
+        "traces_available",
+    ];
+    for key in obj.keys() {
+        if !V1_FIELDS.contains(&key.as_str()) {
+            return Err(EfficacyError::Data(format!(
+                "v1 field {key:?} has no v2 mapping: the lift carries v1 fields verbatim and refuses what it cannot carry (ruling e2)"
+            )));
+        }
+    }
+
     let metrics = match obj.get("metrics") {
         Some(serde_json::Value::Object(m)) => m,
         _ => {
@@ -692,6 +713,17 @@ pub fn lift_v1(doc: &serde_json::Value) -> Result<serde_json::Value, EfficacyErr
                 "v1 metric {name} is not an object"
             )));
         };
+        // v2 evidence keys cannot pre-exist in a v1 report; letting one
+        // through would either clobber the explicit null or ship a value
+        // the lift did not verify, and the failure would only surface at
+        // a later validate run.
+        for reserved in ["baseline", "after", "gap_closed"] {
+            if fields.contains_key(reserved) {
+                return Err(EfficacyError::Data(format!(
+                    "v1 metric {name} already carries {reserved:?}: v2 evidence cannot pre-exist in a v1 report (ruling e2)"
+                )));
+            }
+        }
         let mut lifted = serde_json::Map::new();
         // The v2 fields with no v1 evidence: explicit null, never
         // synthesised. The v1 sub-fields (mean_reduction, std_dev,

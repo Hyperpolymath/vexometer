@@ -374,6 +374,12 @@ subcommand. The lift is normative and purely structural:
   and `"verdict": "unverified"`;
 * a lifted report never references a frontier record: none existed in v1.
 
+The lift's domain is exactly the mapping table below: a document carrying
+a key outside it -- including any v2 evidence key such as a per-metric
+`baseline`, `after` or `gap_closed` -- is not a well-formed v1 report,
+and `lift` refuses it with an error rather than clobbering, dropping, or
+carrying unverified values into v2 evidence slots.
+
 [cols="2,3", options="header"]
 |===
 |v1 field |v2 treatment
