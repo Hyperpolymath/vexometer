@@ -4,6 +4,7 @@
 //! Subcommands:
 //!   report    Evaluate baseline vs after and emit a vexometer-efficacy-v2 JSON report
 //!   attempt   Evaluate one configuration and append it to a vexometer-frontier-v1 record
+//!   lift      Mechanically lift a v1 efficacy report to the v2.1 shape (ruling e2)
 //!   validate  Check stored efficacy/frontier documents against the protocol's rules
 
 use std::collections::BTreeMap;
@@ -11,8 +12,8 @@ use std::fs;
 use std::process::ExitCode;
 
 use vexometer_efficacy::{
-    build_report, evaluate, validate_efficacy, validate_frontier, EfficacyError, FrontierRecord,
-    Measurement, ReportMeta, EFFICACY_VERSION, FRONTIER_VERSION,
+    build_report, check_scenario_registry, evaluate, lift_v1, validate_efficacy, validate_frontier,
+    FrontierRecord, Measurement, ReportMeta, EFFICACY_VERSION, FRONTIER_VERSION,
 };
 
 const USAGE: &str = "\
@@ -21,19 +22,25 @@ vexometer-efficacy — ISA efficacy protocol tooling
 USAGE:
   vexometer-efficacy report --baseline FILE --after FILE --targets M1[,M2...]
       --satellite NAME --sample-size N [--scenario-set SHA] [--date YYYY-MM-DD]
-      [--methodology STR] [--notes STR] [--frontier-record PATH]
+      [--methodology STR] [--notes STR] [--frontier-records PATH]...
       [--traces-available true|false] --output FILE
 
   vexometer-efficacy attempt --baseline FILE --after FILE --targets M1[,M2...]
       --metric M --satellite NAME --config STR --frontier FILE
       [--model-profile STR] [--timestamp ISO8601] [--scenario-set SHA]
 
+  vexometer-efficacy lift --input FILE --output FILE
+      (vexometer-efficacy-v1 in, lifted v2 report out, verdict unverified;
+      ruling e2)
+
   vexometer-efficacy validate FILE... [--efficacy FILE]... [--frontier FILE]...
+      [--scenario-registry FILE]
       (bare FILEs are routed by their \"version\" field; the flags force a kind)
 
 Measurement FILEs hold all ten ISA metric scores plus the probe result; see
-vexometer-efficacy/README.adoc for the format. Exit codes: 0 success (any
-verdict), 1 usage or data error, 2 open D1 ruling, 3 validation failed.
+vexometer-efficacy/README.adoc for the format. Pass --frontier-records once
+per target metric, in target order (ruling d1). Exit codes: 0 success (any
+verdict), 1 usage or data error, 3 validation failed.
 ";
 
 struct Args {
@@ -144,15 +151,16 @@ fn cmd_report(args: &Args) -> Result<ExitCode, String> {
         }
     };
 
-    let eval = match evaluate(&baseline, &after, &targets) {
-        Ok(e) => e,
-        Err(e @ EfficacyError::AwaitingRuling { .. }) => {
-            eprintln!("error: {e}");
-            return Ok(ExitCode::from(2));
-        }
-        Err(e) => return Err(e.to_string()),
-    };
+    let eval = evaluate(&baseline, &after, &targets).map_err(|e| e.to_string())?;
 
+    if args.opt("frontier-record")?.is_some() {
+        return Err(
+            "--frontier-record was renamed --frontier-records: pass it once per \
+             target metric, in target order (ruling d1)"
+                .to_string(),
+        );
+    }
+    let frontier_records = args.many("frontier-records");
     let meta = ReportMeta {
         satellite: args.one("satellite")?.to_string(),
         evaluation_date: args.opt("date")?.map(str::to_string).unwrap_or_else(today),
@@ -164,7 +172,11 @@ fn cmd_report(args: &Args) -> Result<ExitCode, String> {
             .to_string(),
         traces_available,
         verdict_notes: args.opt("notes")?.map(str::to_string),
-        frontier_record: args.opt("frontier-record")?.map(str::to_string),
+        frontier_records: if frontier_records.is_empty() {
+            None
+        } else {
+            Some(frontier_records)
+        },
     };
 
     let (report, warnings) = build_report(&eval, &meta).map_err(|e| e.to_string())?;
@@ -198,14 +210,7 @@ fn cmd_attempt(args: &Args) -> Result<ExitCode, String> {
     let frontier_path = args.one("frontier")?;
     let scenario_set = scenario_set_for(args, &baseline)?;
 
-    let eval = match evaluate(&baseline, &after, &targets) {
-        Ok(e) => e,
-        Err(e @ EfficacyError::AwaitingRuling { .. }) => {
-            eprintln!("error: {e}");
-            return Ok(ExitCode::from(2));
-        }
-        Err(e) => return Err(e.to_string()),
-    };
+    let eval = evaluate(&baseline, &after, &targets).map_err(|e| e.to_string())?;
 
     let mut record = if fs::metadata(frontier_path).is_ok() {
         let doc = read_json(frontier_path)?;
@@ -262,12 +267,27 @@ fn cmd_attempt(args: &Args) -> Result<ExitCode, String> {
     Ok(ExitCode::SUCCESS)
 }
 
+fn cmd_lift(args: &Args) -> Result<ExitCode, String> {
+    args.no_positional("lift")?;
+    let input = args.one("input")?;
+    let doc = read_json(input)?;
+    let lifted = lift_v1(&doc).map_err(|e| e.to_string())?;
+    let output = args.one("output")?;
+    write_json(output, &lifted)?;
+    println!("lifted {input} -> {output} (verdict unverified; ruling e2)");
+    Ok(ExitCode::SUCCESS)
+}
+
 fn cmd_validate(args: &Args) -> Result<ExitCode, String> {
     let efficacy = args.many("efficacy");
     let frontier = args.many("frontier");
     if efficacy.is_empty() && frontier.is_empty() && args.positional.is_empty() {
         return Err("validate needs at least one file to check".to_string());
     }
+    let registry = match args.opt("scenario-registry")? {
+        Some(path) => Some(read_json(path)?),
+        None => None,
+    };
     let mut failed = false;
     for path in &args.positional {
         // A bare path is routed by the document's own version discriminant,
@@ -275,11 +295,13 @@ fn cmd_validate(args: &Args) -> Result<ExitCode, String> {
         let doc = read_json(path)?;
         match doc.get("version").and_then(|v| v.as_str()) {
             Some(v) if v == EFFICACY_VERSION => {
-                let problems = validate_efficacy(&doc);
+                let mut problems = validate_efficacy(&doc);
+                problems.extend(registry_problems(registry.as_ref(), &doc));
                 report_problems(path, EFFICACY_VERSION, &problems, &mut failed);
             }
             Some(v) if v == FRONTIER_VERSION => {
-                let problems = validate_frontier(&doc);
+                let mut problems = validate_frontier(&doc);
+                problems.extend(registry_problems(registry.as_ref(), &doc));
                 report_problems(path, FRONTIER_VERSION, &problems, &mut failed);
             }
             Some(other) => {
@@ -295,11 +317,15 @@ fn cmd_validate(args: &Args) -> Result<ExitCode, String> {
         }
     }
     for path in &efficacy {
-        let problems = validate_efficacy(&read_json(path)?);
+        let doc = read_json(path)?;
+        let mut problems = validate_efficacy(&doc);
+        problems.extend(registry_problems(registry.as_ref(), &doc));
         report_problems(path, "vexometer-efficacy-v2", &problems, &mut failed);
     }
     for path in &frontier {
-        let problems = validate_frontier(&read_json(path)?);
+        let doc = read_json(path)?;
+        let mut problems = validate_frontier(&doc);
+        problems.extend(registry_problems(registry.as_ref(), &doc));
         report_problems(path, "vexometer-frontier-v1", &problems, &mut failed);
     }
     Ok(if failed {
@@ -307,6 +333,31 @@ fn cmd_validate(args: &Args) -> Result<ExitCode, String> {
     } else {
         ExitCode::SUCCESS
     })
+}
+
+/// Check every scenario-set hash a document scores against the held-out
+/// registry (ruling f1). Efficacy reports carry one top-level hash; frontier
+/// records carry one per attempt as well.
+fn registry_problems(registry: Option<&serde_json::Value>, doc: &serde_json::Value) -> Vec<String> {
+    let Some(registry) = registry else {
+        return Vec::new();
+    };
+    let mut sets: Vec<&str> = Vec::new();
+    if let Some(s) = doc.get("scenario_set").and_then(|v| v.as_str()) {
+        sets.push(s);
+    }
+    if let Some(attempts) = doc.get("attempts").and_then(|v| v.as_array()) {
+        sets.extend(
+            attempts
+                .iter()
+                .filter_map(|a| a.get("scenario_set").and_then(|v| v.as_str())),
+        );
+    }
+    sets.sort_unstable();
+    sets.dedup();
+    sets.iter()
+        .flat_map(|s| check_scenario_registry(registry, s))
+        .collect()
 }
 
 fn report_problems(path: &str, kind: &str, problems: &[String], failed: &mut bool) {
@@ -376,6 +427,7 @@ fn main() -> ExitCode {
         match cmd {
             "report" => cmd_report(&args),
             "attempt" => cmd_attempt(&args),
+            "lift" => cmd_lift(&args),
             "validate" => cmd_validate(&args),
             "--help" | "-h" | "help" => {
                 print!("{USAGE}");
@@ -389,11 +441,7 @@ fn main() -> ExitCode {
         Err(msg) => {
             eprintln!("error: {msg}");
             eprintln!("run vexometer-efficacy --help for usage");
-            ExitCode::from(if msg.contains("awaiting ruling") {
-                2
-            } else {
-                1
-            })
+            ExitCode::from(1)
         }
     }
 }

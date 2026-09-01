@@ -11,52 +11,65 @@ applies the six-verdict acceptance rule with its precedence order, emits
 records under the monotone-frontier invariant, and validates both
 document shapes by recomputing every derived number.
 
-== Design rule: refuse where the protocol is undecided
+== The ruled semantics (protocol v2.1)
 
-Six normative questions are open in
-https://github.com/hyperpolymath/vexometer/issues/69[issue #69] (debt
-item D1). Where one of them bites, this tool *refuses with an explicit
-error* naming the question rather than silently picking a semantic:
+The six normative questions this tool originally refused to guess at
+(https://github.com/hyperpolymath/vexometer/issues/69[issue #69],
+D1a-D1f) were ruled `a1, b1, c1, d1, e2, f1` on 2026-09-01 and are
+implemented here:
 
-[cols="1,4,2",options="header"]
+[cols="1,4,3",options="header"]
 |===
-|Question |When it bites |Behaviour
+|Ruling |When it bites |Behaviour
 
-|D1a
-|A declared target metric has baseline `B_m = 0` (division by zero in
-`G_m`)
-|Hard refusal, exit code 2
+|a1
+|A declared target metric has baseline `B_m = 0`
+|`G_m := 0`, so the target cannot improve and the verdict is
+`reject_null`; the report lists the metric in a diagnosability warning.
+Zero-baseline *collateral* metrics stay fully protected.
 
-|D1b
-|Per-probe results are supplied for both measurements and the aggregate
-pass-rate gate disagrees with the per-probe identity gate
-|Hard refusal, exit code 2
+|b1
+|Per-probe results exist in both measurements
+|The per-probe identity gate is normative: at most one baseline-passing
+probe may fail after; newly-passing probes buy nothing back. The
+aggregate pass-rate gate is the degraded fallback when per-probe results
+are absent.
 
-|D1c
-|Multiple targets are declared and some improved while others did not
-|Hard refusal, exit code 2
+|c1
+|Multiple targets are declared
+|All-targets rule: every declared target must improve, or the verdict is
+`reject_null`.
 
-|D1d
-|Multiple targets with the singular `frontier_record` field
-|Report is emitted, with a warning on stderr
+|d1
+|Frontier references
+|Plural `frontier_records`, one per-metric record per target, in target
+order; a length mismatch is a hard error and the pre-ruling singular
+`frontier_record` key fails validation.
 
-|D1e
+|e2
 |v1→v2 lifting
-|Unimplemented — no `lift` subcommand exists
-|===
+|The `lift` subcommand: v1 fields carried verbatim, missing v2 evidence
+as explicit `null`, `lifted_from` marker, `verdict: "unverified"`
+(reserved for lifted reports).
 
-After the rulings land and the protocol is amended to v2.1, these
-refusals are replaced by the ruled semantics.
+|f1
+|Scenario-set provenance
+|`validate --scenario-registry FILE` checks every scored `scenario_set`
+against the held-out partition registry at
+`../vexometer/data/scenario_sets/registry.json`.
+|===
 
 == The protocol's examples are the test fixtures
 
 The integration tests read `../vexometer/docs/EFFICACY-PROTOCOL.adoc`
 at build time, extract its example JSON blocks, and require that the
-validator accepts both and that the evaluator reproduces the efficacy
+validator accepts them all, that the evaluator reproduces the efficacy
 example value-for-value from raw inputs (including `D_ISA = -2.71`
 under the default category weights in
-link:../vexometer/docs/METRICS.adoc[METRICS.adoc]). If the protocol and
-this implementation drift apart, `cargo test` fails loudly.
+link:../vexometer/docs/METRICS.adoc[METRICS.adoc]), and that `lift`
+reproduces the protocol's lifted example from its v1 example. If the
+protocol and this implementation drift apart, `cargo test` fails
+loudly.
 
 == CLI
 
@@ -66,7 +79,8 @@ $ vexometer-efficacy report --baseline baseline.json --after after.json \
     --targets LPS,TII --satellite vex-verbosity-compressor \
     --sample-size 500 --output report.json \
     [--methodology "A/B testing with vexometer validation"] \
-    [--notes "..."] [--frontier-record frontier/LPS-....json] \
+    [--notes "..."] \
+    [--frontier-records frontier/LPS-....json]... \
     [--traces-available true|false] [--date YYYY-MM-DD] [--scenario-set SHA]
 
 $ vexometer-efficacy attempt --frontier frontier/LPS-2026-09-01.json \
@@ -75,18 +89,24 @@ $ vexometer-efficacy attempt --frontier frontier/LPS-2026-09-01.json \
     [--model-profile STR] [--timestamp ISO8601] [--scenario-set SHA] \
     [--baseline-isa 4.63]   # required when creating a new frontier record
 
-$ vexometer-efficacy validate report.json frontier.json ...
+$ vexometer-efficacy lift --input v1-report.json --output lifted.json
+
+$ vexometer-efficacy validate report.json frontier.json ... \
+    [--scenario-registry ../vexometer/data/scenario_sets/registry.json]
 ----
 
-Bare `validate` arguments are routed by each document's own `version`
-field; `--efficacy FILE` / `--frontier FILE` force a kind when a
-document lacks one. The same commands are exposed at the monorepo root
-as `just efficacy-report`, `just efficacy-attempt`, and
-`just efficacy-validate`.
+Pass `--frontier-records` once per target metric, in target order
+(ruling d1). Bare `validate` arguments are routed by each document's own
+`version` field; `--efficacy FILE` / `--frontier FILE` force a kind when
+a document lacks one, and `--scenario-registry` enforces ruling f1
+against every scored scenario set. The same commands are exposed at the
+monorepo root as `just efficacy-report`, `just efficacy-attempt`,
+`just efficacy-lift`, and `just efficacy-validate`.
 
 Exit codes: `0` success (any verdict, including rejections — a computed
-rejection is a successful evaluation), `1` usage or data error, `2` open
-D1 ruling required, `3` validation failed.
+rejection is a successful evaluation), `1` usage or data error, `3`
+validation failed. (Exit code `2`, the pre-ruling "open D1 question"
+refusal, is retired.)
 
 == Measurement input format
 
@@ -115,8 +135,9 @@ pass over one content-addressed scenario set:
   `{score, std_dev, confidence, p_value}` object are both accepted;
   statistics are carried into the report when present.
 * `probes.results` (per-probe outcomes) is optional; when both
-  measurements carry it, the per-probe identity gate is cross-checked
-  against the aggregate gate (see D1b above).
+  measurements carry it, the per-probe identity gate is normative
+  (ruling b1) and the report records any regressed probes in
+  `capability.probes_regressed`.
 * `scenario_set` must match between baseline and after — tuning against
   a different set than you score on is exactly what the protocol's
   audit trail exists to catch.
