@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// Last updated: 2026-09-01
 == VEX Toolkit (vexometer) — Project Topology
 
 ____
@@ -47,12 +49,19 @@ ____
 
 === Completion Dashboard
 
+NOTE: Percentages are maintainer *estimates* — no command measures them
+(D3, `docs/sitrep-2026-09-01.adoc`). Measured figures (test counts,
+assertion sites) live in `.machine_readable/6a2/STATE.a2ml`, each with
+the command that produced it. `STATE.a2ml`'s `completion-percentage`
+mirrors the OVERALL row below; update this dashboard first.
+
 ....
 COMPONENT                          STATUS              NOTES
 ─────────────────────────────────  ──────────────────  ─────────────────────────────────
 ISA & INTERVENTION
   ISA (vexometer analyser)          ████████░░  80%    Core metrics, JSON loaders, and CLI/report wiring implemented
   ISA Satellites                    █████░░░░░  45%    Protocol/docs exist; most satellites still planned
+  Efficacy Evaluator                ██████░░░░  60%    Evaluator/validator + 15 fixture tests shipped (PR #70); D1 rulings pending (#69); no satellite runs yet
   Lazy Eliminator                   ████████░░  75%    Core analyzer tested; polish/integration pending
   Satellite Template                █████████░  90%    Template structure stable by design
 
@@ -67,7 +76,7 @@ REPO INFRASTRUCTURE
   Consolidation (2026)              ██████████ 100%    6 repos successfully merged
 
 ─────────────────────────────────────────────────────────────────────────────
-OVERALL:                            ███████░░░  ~70%   Core operational; ecosystem integration still maturing
+OVERALL:                            ███████░░░  70%    Estimate; core operational, ecosystem integration still maturing
 ....
 
 === Key Dependencies
