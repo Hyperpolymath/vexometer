@@ -83,9 +83,12 @@ on baseline output and on satellite-processed output.
 |`capability_ok` |`P_after >= P_before - tolerance`
 |===
 
-*Provisional tolerance*: one probe (`1/13 ~= 0.077`). A satellite that
-fails two or more probes its baseline passed is rejected regardless of
-metric improvement.
+*Provisional tolerance*: one probe, i.e. `1/N` for a suite of `N` probes.
+A satellite that fails two or more probes its baseline passed is rejected
+regardless of metric improvement. The shipped suite currently holds 13 of
+its designed 14 probes (`PROBE-CORRECTION-002` is absent), so the tolerance
+is presently `1/13 ~= 0.077`. Express it against the loaded suite size
+rather than a literal, and re-baseline when the missing probe lands.
 
 NOTE: The probe suite is a proxy, not a capability benchmark. It detects
 gross degradation, not subtle loss. Satellites whose interventions are
