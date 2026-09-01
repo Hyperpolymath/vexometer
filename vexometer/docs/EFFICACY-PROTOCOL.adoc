@@ -43,8 +43,11 @@ The fraction of the available irritation gap removed. Since the floor is
 
 [source]
 ----
-G_m = (B_m - A_m) / B_m        expressed as a percentage
+G_m = (B_m - A_m) / B_m        a fraction in [0, 1]
 ----
+
+Reports store `gap_closed` as this fraction (`0.585`, not `58.5`);
+prose may cite it as a percentage.
 
 *Collateral delta* (`D_c`)::
 For every metric `c` other than the target(s), the absolute change
@@ -58,6 +61,9 @@ in link:METRICS.adoc[METRICS.adoc]:
 ----
 D_ISA = ( SUM(w_c * (A_c - B_c)) / SUM(w_c) ) * 100
 ----
+
+Here the sum ranges over all ten metrics -- targets included -- unlike
+the collateral set above, which excludes them.
 
 A satellite must produce `D_ISA < 0` to be accepted. This is the rule
 that prevents a large reduction in a low-weight metric from paying for a
@@ -200,7 +206,7 @@ creep into collapse, which METRICS.adoc scores as Critical
 interruption
 |===
 
-The three same-metric entries are the sharpest cases. SFR and TII are
+The two same-metric entries are the sharpest cases. SFR and TII are
 two-sided metrics: they penalise both excess and deficit. A satellite
 targeting one side must demonstrate it has not simply crossed to the
 other.
@@ -209,8 +215,8 @@ other.
 
 `vexometer-efficacy-v2` is *additive* to `vexometer-efficacy-v1`
 (link:SATELLITES.adoc[SATELLITES.adoc]). v1 reports remain valid and
-readable. v2 adds three fields: `collateral_metrics` (all ten), a
-`capability` block, and a `verdict`.
+readable. v2 adds three fields: `collateral_metrics` (every metric outside
+`target_metrics`), a `capability` block, and a `verdict`.
 
 [source,json]
 ----
@@ -281,7 +287,10 @@ readable. v2 adds three fields: `collateral_metrics` (all ten), a
 
 A v1 report can be mechanically lifted to v2 shape, but it cannot be
 assigned a verdict: the collateral and capability evidence does not
-exist. Lifted reports carry `"verdict": "unverified"`.
+exist. Lifted reports carry `"verdict": "unverified"`. `unverified` is a
+verification-status sentinel, not a seventh verdict: it sits outside the
+acceptance-rule table and its precedence order, and marks a report whose
+collateral and capability evidence is absent.
 
 == Protocol: vexometer-frontier-v1
 

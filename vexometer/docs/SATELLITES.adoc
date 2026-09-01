@@ -330,10 +330,14 @@ just trace-collect --input responses/ --output after/
 
 Compare before and after metrics:
 
+NOTE: `just efficacy-report` is not yet implemented, and this v1
+signature is superseded by the `--frontier` workflow in
+link:EFFICACY-PROTOCOL.adoc[EFFICACY-PROTOCOL.adoc], which records
+collateral metrics and capability. The command below documents the
+intended v1 shape only.
+
 [source,bash]
 ----
-# Superseded by the --frontier signature in EFFICACY-PROTOCOL.adoc,
-# which records collateral metrics and capability. Neither is implemented yet.
 just efficacy-report --before before/ --after after/ --output EFFICACY.adoc
 ----
 
