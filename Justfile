@@ -69,6 +69,10 @@ efficacy-report *ARGS:
 efficacy-attempt *ARGS:
     cd vexometer-efficacy && cargo run --release --quiet -- attempt "$@"
 
+# Mechanically lift a vexometer-efficacy-v1 report to v2.1 shape (ruling e2)
+efficacy-lift *ARGS:
+    cd vexometer-efficacy && cargo run --release --quiet -- lift "$@"
+
 # Validate efficacy reports and frontier records by recomputation
 efficacy-validate *ARGS:
     cd vexometer-efficacy && cargo run --release --quiet -- validate "$@"

@@ -11,13 +11,15 @@
 * [x] Protocol examples as live test fixtures (drift fails `cargo test`)
 * [x] Explicit refusals on open D1 questions (issue #69)
 
-== After the D1 rulings (v0.2, blocked on issue #69)
+== The D1 rulings (v0.2, shipped — issue #69 ruled `a1,b1,c1,d1,e2,f1`)
 
-* [ ] Replace each D1a–D1d refusal with the ruled semantic
-* [ ] `frontier_records` plurality per ruling (d)
-* [ ] v1→v2 lifting: implement or formally drop per ruling (e)
-* [ ] Held-out scenario-set support per ruling (f)
-* [ ] Track the protocol's v2.1 text (same PR as the amendment)
+* [x] Replace each D1a–D1d refusal with the ruled semantic (a1 zero
+  baseline, b1 per-probe identity gate, c1 all-targets rule)
+* [x] `frontier_records` plurality per ruling d1
+* [x] v1→v2 lifting: `lift` subcommand per ruling e2
+* [x] Held-out scenario-set registry + `--scenario-registry` per
+  ruling f1
+* [x] Track the protocol's v2.1 text (same PR as the amendment)
 
 == Later
 

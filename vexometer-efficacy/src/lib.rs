@@ -2,20 +2,22 @@
 //! Efficacy evaluator for the vexometer ISA efficacy protocol.
 //!
 //! Implements the computation and validation halves of
-//! `vexometer/docs/EFFICACY-PROTOCOL.adoc`: `G_m`, collateral deltas,
-//! `D_ISA`, the capability proxy, the six-verdict acceptance rule with its
-//! precedence order, and `vexometer-frontier-v1` record maintenance.
+//! `vexometer/docs/EFFICACY-PROTOCOL.adoc` (v2.1): `G_m`, collateral
+//! deltas, `D_ISA`, the capability proxy, the six-verdict acceptance rule
+//! with its precedence order, `vexometer-frontier-v1` record maintenance,
+//! and mechanical v1 -> v2 report lifting.
 //!
-//! Where the protocol is normatively undecided (issue #69, questions
-//! D1a-D1d), this crate refuses to guess: it returns an
-//! `EfficacyError::AwaitingRuling` naming the open question instead of
-//! silently picking a semantic.
+//! The six normative questions this crate once refused to guess at
+//! (issue #69, D1a-D1f) were ruled a1, b1, c1, d1, e2, f1; the ruled
+//! semantics are implemented here and the protocol text is amended to
+//! v2.1 in the same change.
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt;
 
-/// The owner-ruling issue batching the six open normative questions.
+/// The owner-ruling issue that batched the six normative questions
+/// (D1a-D1f), ruled a1, b1, c1, d1, e2, f1 on 2026-09-01.
 pub const ISSUE_D1: &str = "https://github.com/hyperpolymath/vexometer/issues/69";
 
 /// The ten ISA metrics with their default category weights, in canonical
@@ -64,11 +66,6 @@ pub fn round3(x: f64) -> f64 {
 
 #[derive(Debug)]
 pub enum EfficacyError {
-    /// The computation requires an answer to an open D1 question.
-    AwaitingRuling {
-        question: &'static str,
-        detail: String,
-    },
     /// The input data is malformed or incomplete.
     Data(String),
 }
@@ -76,9 +73,6 @@ pub enum EfficacyError {
 impl fmt::Display for EfficacyError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            EfficacyError::AwaitingRuling { question, detail } => {
-                write!(f, "awaiting ruling {question} (see {ISSUE_D1}): {detail}")
-            }
             EfficacyError::Data(msg) => write!(f, "invalid input: {msg}"),
         }
     }
@@ -141,8 +135,9 @@ pub struct ProbeMeasurement {
     pub total: u32,
     pub passed: u32,
     /// Optional per-probe outcomes, keyed by probe id. When present in
-    /// both measurements, the identity gate is cross-checked against the
-    /// aggregate gate (see D1b).
+    /// both measurements, the per-probe identity gate is normative
+    /// (ruling b1); without it the aggregate pass-rate gate is the
+    /// degraded fallback.
     #[serde(default)]
     pub results: Option<BTreeMap<String, bool>>,
 }
@@ -189,8 +184,9 @@ pub enum Verdict {
     RejectNet,
     RejectNull,
     /// Verification-status sentinel for lifted v1 reports, outside the
-    /// six-verdict acceptance table. Never emitted by this tool (v1->v2
-    /// lifting is unimplemented pending ruling D1e).
+    /// six-verdict acceptance table. Emitted only by [`lift_v1`]
+    /// (ruling e2); a report without the `lifted_from` marker must never
+    /// carry it.
     Unverified,
 }
 
@@ -262,6 +258,10 @@ pub struct Evaluation {
     /// Collateral metrics whose delta falls in the warning band
     /// `(COLLATERAL_ACCEPT, COLLATERAL_WARN]`.
     pub warned_metrics: Vec<String>,
+    /// Targets declared with a zero baseline. Ineligible under ruling
+    /// a1: `G_m` is defined as 0 there, improvement is impossible at the
+    /// floor, and the all-targets rule forces `reject_null`.
+    pub zero_baseline_targets: Vec<String>,
 }
 
 impl Evaluation {
@@ -324,35 +324,37 @@ pub fn evaluate(
         }
     }
 
-    // Targets: G_m. A zero baseline makes G_m undefined -- open question D1a.
+    // Targets: G_m. A zero baseline leaves no gap to close: G_m is
+    // defined as 0 there and improvement is impossible at the floor, so
+    // a zero-baseline metric is ineligible as a target (ruling a1) and
+    // the all-targets rule below yields reject_null.
     let mut target_out = BTreeMap::new();
     let mut improvements = Vec::new();
+    let mut zero_baseline_targets = Vec::new();
     for t in targets {
         let b = baseline.metrics[t].score();
         let a_reading = &after.metrics[t];
         let a = a_reading.score();
-        if b == 0.0 {
-            return Err(EfficacyError::AwaitingRuling {
-                question: "D1a",
-                detail: format!(
-                    "target metric {t} has baseline 0; G_m = (B_m - A_m) / B_m is undefined"
-                ),
-            });
-        }
+        let gap_closed = if b == 0.0 {
+            zero_baseline_targets.push(t.clone());
+            0.0
+        } else {
+            (b - a) / b
+        };
         let (std_dev, confidence, p_value) = a_reading.stats();
         target_out.insert(
             t.clone(),
             TargetOutcome {
                 baseline: b,
                 after: a,
-                gap_closed: (b - a) / b,
+                gap_closed,
                 mean_reduction: b - a,
                 std_dev,
                 confidence,
                 p_value,
             },
         );
-        improvements.push(a < b - EPS);
+        improvements.push(b != 0.0 && a < b - EPS);
     }
 
     // Collateral: every metric outside the target set.
@@ -384,16 +386,19 @@ pub fn evaluate(
     }
     let isa_delta_raw = num / den * 100.0;
 
-    // Capability proxy. The normative table defines the aggregate gate;
-    // the prose sentence about "two or more probes" implies an identity
-    // gate. When per-probe data lets both be computed and they disagree,
-    // that is open question D1b.
+    // Capability proxy. When per-probe results exist for both
+    // measurements, the identity gate is normative (ruling b1): at most
+    // one baseline-passing probe may fail after the intervention, and a
+    // newly-passing probe cannot buy back a regression. The aggregate
+    // pass-rate gate (P_after >= P_before - 1/N) is the degraded
+    // fallback when per-probe results are absent.
     let tolerance = 1.0 / f64::from(baseline.probes.total);
     let rate_before = baseline.probes.pass_rate();
     let rate_after = after.probes.pass_rate();
     let aggregate_ok = rate_after >= rate_before - tolerance - EPS;
 
-    let probes_regressed = match (&baseline.probes.results, &after.probes.results) {
+    let (capability_ok, probes_regressed) = match (&baseline.probes.results, &after.probes.results)
+    {
         (Some(before), Some(after_r)) => {
             if before.keys().ne(after_r.keys()) {
                 return Err(EfficacyError::Data(
@@ -405,51 +410,23 @@ pub fn evaluate(
                 .filter(|(id, passed)| **passed && !after_r[*id])
                 .map(|(id, _)| id.clone())
                 .collect();
-            let identity_ok = regressed.len() <= 1;
-            if identity_ok != aggregate_ok {
-                return Err(EfficacyError::AwaitingRuling {
-                    question: "D1b",
-                    detail: format!(
-                        "aggregate pass-rate gate says capability_ok={aggregate_ok} but \
-                         per-probe identity gate says capability_ok={identity_ok} \
-                         ({} baseline-passing probes regressed: {})",
-                        regressed.len(),
-                        regressed.join(", ")
-                    ),
-                });
-            }
-            Some(regressed)
+            (regressed.len() <= 1, Some(regressed))
         }
-        _ => None,
+        _ => (aggregate_ok, None),
     };
 
     let capability = CapabilityOutcome {
         probes_total: baseline.probes.total,
         pass_rate_before: rate_before,
         pass_rate_after: rate_after,
-        capability_ok: aggregate_ok,
+        capability_ok,
         probes_regressed,
     };
 
-    // Target improvement. All improved / none improved are decidable; a
-    // mixed outcome needs the multi-target acceptance rule -- open
-    // question D1c.
+    // Target improvement, under the all-targets rule (ruling c1): every
+    // declared target must improve, or the attempt is a null result. A
+    // partial win is a moved irritation surface, not a shrunk one.
     let all_improved = improvements.iter().all(|i| *i);
-    let none_improved = improvements.iter().all(|i| !*i);
-    if !all_improved && !none_improved {
-        let detail: Vec<String> = targets
-            .iter()
-            .zip(&improvements)
-            .map(|(t, i)| format!("{t}: {}", if *i { "improved" } else { "not improved" }))
-            .collect();
-        return Err(EfficacyError::AwaitingRuling {
-            question: "D1c",
-            detail: format!(
-                "targets disagree on improvement ({}); the multi-target acceptance rule is undecided",
-                detail.join(", ")
-            ),
-        });
-    }
 
     let max_collateral = collateral
         .values()
@@ -462,7 +439,7 @@ pub fn evaluate(
         .collect();
 
     // Acceptance rule with the protocol's precedence order.
-    let verdict = if none_improved {
+    let verdict = if !all_improved {
         Verdict::RejectNull
     } else if !capability.capability_ok {
         Verdict::RejectCapability
@@ -485,6 +462,7 @@ pub fn evaluate(
         isa_delta_raw,
         verdict,
         warned_metrics,
+        zero_baseline_targets,
     })
 }
 
@@ -544,8 +522,9 @@ pub struct EfficacyReport {
     pub verdict_notes: Option<String>,
     pub methodology: String,
     pub traces_available: bool,
+    /// One frontier-record reference per target metric (ruling d1).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub frontier_record: Option<String>,
+    pub frontier_records: Option<Vec<String>>,
 }
 
 /// Report-level metadata supplied by the caller rather than computed.
@@ -558,13 +537,13 @@ pub struct ReportMeta {
     pub methodology: String,
     pub traces_available: bool,
     pub verdict_notes: Option<String>,
-    pub frontier_record: Option<String>,
+    pub frontier_records: Option<Vec<String>>,
 }
 
 /// Assemble a `vexometer-efficacy-v2` report from an evaluation.
 ///
-/// Returns the report plus any non-fatal warnings (currently: the D1d
-/// singular-`frontier_record` ambiguity for multi-target reports).
+/// Returns the report plus any non-fatal warnings (currently: notes
+/// naming zero-baseline targets, which are ineligible under ruling a1).
 pub fn build_report(
     eval: &Evaluation,
     meta: &ReportMeta,
@@ -589,12 +568,22 @@ pub fn build_report(
         }
     }
 
-    if eval.targets.len() > 1 && meta.frontier_record.is_some() {
+    for m in &eval.zero_baseline_targets {
         warnings.push(format!(
-            "frontier_record is a single reference but the report has {} targets; \
-             plurality is undecided -- awaiting ruling D1d (see {ISSUE_D1})",
-            eval.targets.len()
+            "target {m} has baseline 0 and is ineligible as an efficacy target \
+             (ruling a1): G_m is defined as 0 and the verdict is reject_null"
         ));
+    }
+
+    if let Some(records) = &meta.frontier_records {
+        if records.len() != eval.targets.len() {
+            return Err(EfficacyError::Data(format!(
+                "frontier_records must carry one per-metric record per target \
+                 (ruling d1): {} target(s) but {} record(s)",
+                eval.targets.len(),
+                records.len()
+            )));
+        }
     }
 
     let target_metrics = eval
@@ -652,9 +641,180 @@ pub fn build_report(
         verdict_notes: meta.verdict_notes.clone(),
         methodology: meta.methodology.clone(),
         traces_available: meta.traces_available,
-        frontier_record: meta.frontier_record.clone(),
+        frontier_records: meta.frontier_records.clone(),
     };
     Ok((report, warnings))
+}
+
+// ---------------------------------------------------------------------------
+// v1 -> v2 lifting (ruling e2)
+// ---------------------------------------------------------------------------
+
+pub const EFFICACY_V1_VERSION: &str = "vexometer-efficacy-v1";
+
+/// Mechanically lift a `vexometer-efficacy-v1` report to v2.1 shape
+/// (ruling e2). Every v1 field is carried verbatim; every required v2
+/// field whose evidence does not exist in v1 becomes an explicit `null`
+/// -- nothing is synthesised. The result carries
+/// `"lifted_from": "vexometer-efficacy-v1"` and
+/// `"verdict": "unverified"`, and satisfies the lifted branch of
+/// [`validate_efficacy`].
+pub fn lift_v1(doc: &serde_json::Value) -> Result<serde_json::Value, EfficacyError> {
+    let obj = doc
+        .as_object()
+        .ok_or_else(|| EfficacyError::Data("a v1 report must be a JSON object".into()))?;
+    match obj.get("version").and_then(|v| v.as_str()) {
+        Some(EFFICACY_V1_VERSION) => {}
+        Some(other) => {
+            return Err(EfficacyError::Data(format!(
+                "lift takes a {EFFICACY_V1_VERSION} report, got version {other:?}"
+            )))
+        }
+        None => {
+            return Err(EfficacyError::Data(
+                "lift takes a v1 report with a \"version\" field".into(),
+            ))
+        }
+    }
+
+    // The lift domain is exactly the protocol's v1 mapping table. A key
+    // outside it either collides with a v2 slot the lift must control
+    // (verdict, capability, ...) or would be dropped silently -- both
+    // break the carried-verbatim promise, so refuse instead.
+    const V1_FIELDS: [&str; 7] = [
+        "version",
+        "metrics",
+        "satellite",
+        "evaluation_date",
+        "sample_size",
+        "methodology",
+        "traces_available",
+    ];
+    for key in obj.keys() {
+        if !V1_FIELDS.contains(&key.as_str()) {
+            return Err(EfficacyError::Data(format!(
+                "v1 field {key:?} has no v2 mapping: the lift carries v1 fields verbatim and refuses what it cannot carry (ruling e2)"
+            )));
+        }
+    }
+
+    let metrics = match obj.get("metrics") {
+        Some(serde_json::Value::Object(m)) => m,
+        _ => {
+            return Err(EfficacyError::Data(
+                "v1 report has no \"metrics\" object to lift".into(),
+            ))
+        }
+    };
+    let mut target_metrics = serde_json::Map::new();
+    for (name, reading) in metrics {
+        let serde_json::Value::Object(fields) = reading else {
+            return Err(EfficacyError::Data(format!(
+                "v1 metric {name} is not an object"
+            )));
+        };
+        // v2 evidence keys cannot pre-exist in a v1 report; letting one
+        // through would either clobber the explicit null or ship a value
+        // the lift did not verify, and the failure would only surface at
+        // a later validate run.
+        for reserved in ["baseline", "after", "gap_closed"] {
+            if fields.contains_key(reserved) {
+                return Err(EfficacyError::Data(format!(
+                    "v1 metric {name} already carries {reserved:?}: v2 evidence cannot pre-exist in a v1 report (ruling e2)"
+                )));
+            }
+        }
+        let mut lifted = serde_json::Map::new();
+        // The v2 fields with no v1 evidence: explicit null, never
+        // synthesised. The v1 sub-fields (mean_reduction, std_dev,
+        // confidence, p_value) then carry over verbatim.
+        lifted.insert("baseline".into(), serde_json::Value::Null);
+        lifted.insert("after".into(), serde_json::Value::Null);
+        lifted.insert("gap_closed".into(), serde_json::Value::Null);
+        for (k, v) in fields {
+            lifted.insert(k.clone(), v.clone());
+        }
+        target_metrics.insert(name.clone(), serde_json::Value::Object(lifted));
+    }
+
+    let carried = |key: &str| obj.get(key).cloned().unwrap_or(serde_json::Value::Null);
+    let mut out = serde_json::Map::new();
+    out.insert("version".into(), serde_json::json!(EFFICACY_VERSION));
+    out.insert("lifted_from".into(), serde_json::json!(EFFICACY_V1_VERSION));
+    out.insert("satellite".into(), carried("satellite"));
+    out.insert("evaluation_date".into(), carried("evaluation_date"));
+    out.insert("sample_size".into(), carried("sample_size"));
+    out.insert("scenario_set".into(), serde_json::Value::Null);
+    out.insert(
+        "target_metrics".into(),
+        serde_json::Value::Object(target_metrics),
+    );
+    out.insert("collateral_metrics".into(), serde_json::Value::Null);
+    out.insert("capability".into(), serde_json::Value::Null);
+    out.insert("isa_delta".into(), serde_json::Value::Null);
+    out.insert("verdict".into(), serde_json::json!("unverified"));
+    out.insert("methodology".into(), carried("methodology"));
+    out.insert("traces_available".into(), carried("traces_available"));
+    Ok(serde_json::Value::Object(out))
+}
+
+// ---------------------------------------------------------------------------
+// Held-out scenario partition registry (ruling f1)
+// ---------------------------------------------------------------------------
+
+pub const SCENARIO_REGISTRY_VERSION: &str = "vexometer-scenario-registry-v1";
+
+#[derive(Debug, Clone, Deserialize)]
+struct ScenarioPartition {
+    name: String,
+    tuning_set: String,
+    held_out_set: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ScenarioRegistry {
+    version: String,
+    partitions: Vec<ScenarioPartition>,
+}
+
+/// Check a scored `scenario_set` against the held-out partition registry
+/// (`vexometer/data/scenario_sets/registry.json`, ruling f1). Scoring
+/// must use a registered held-out hash: a tuning hash is always a
+/// violation, and once any partition is registered an unrecognised hash
+/// is too. An empty registry (no corpus yet) enforces nothing.
+pub fn check_scenario_registry(registry: &serde_json::Value, scenario_set: &str) -> Vec<String> {
+    let reg: ScenarioRegistry = match serde_json::from_value(registry.clone()) {
+        Ok(r) => r,
+        Err(e) => {
+            return vec![format!(
+                "does not parse as {SCENARIO_REGISTRY_VERSION}: {e}"
+            )]
+        }
+    };
+    let mut problems = Vec::new();
+    if reg.version != SCENARIO_REGISTRY_VERSION {
+        problems.push(format!(
+            "registry version is {:?}, expected {SCENARIO_REGISTRY_VERSION:?}",
+            reg.version
+        ));
+    }
+    if let Some(p) = reg.partitions.iter().find(|p| p.tuning_set == scenario_set) {
+        problems.push(format!(
+            "scenario_set {scenario_set} is the TUNING partition of {:?}; scoring must \
+             use its held-out partition {} (ruling f1)",
+            p.name, p.held_out_set
+        ));
+    } else if !reg.partitions.is_empty()
+        && !reg
+            .partitions
+            .iter()
+            .any(|p| p.held_out_set == scenario_set)
+    {
+        problems.push(format!(
+            "scenario_set {scenario_set} matches no registered held-out partition (ruling f1)"
+        ));
+    }
+    problems
 }
 
 // ---------------------------------------------------------------------------
@@ -800,7 +960,15 @@ fn known_metric(m: &str) -> bool {
 
 /// Validate a `vexometer-efficacy-v2` document. Returns a list of
 /// problems; an empty list means the document is valid.
+///
+/// A document carrying the `lifted_from` marker is routed to the lifted
+/// branch (ruling e2), which checks the lift contract instead of
+/// recomputing evidence that does not exist.
 pub fn validate_efficacy(doc: &serde_json::Value) -> Vec<String> {
+    if doc.get("lifted_from").is_some() {
+        return validate_lifted(doc);
+    }
+
     let mut problems = Vec::new();
     let report: EfficacyReport = match serde_json::from_value(doc.clone()) {
         Ok(r) => r,
@@ -818,6 +986,31 @@ pub fn validate_efficacy(doc: &serde_json::Value) -> Vec<String> {
     }
     if report.target_metrics.is_empty() {
         problems.push("target_metrics is empty".into());
+    }
+    if doc.get("frontier_record").is_some() {
+        problems.push(
+            "frontier_record is the pre-ruling singular field; v2.1 uses \
+             frontier_records, one per target metric (ruling d1)"
+                .into(),
+        );
+    }
+    if let Some(records) = &report.frontier_records {
+        if records.len() != report.target_metrics.len() {
+            problems.push(format!(
+                "frontier_records has {} entr{} for {} target metric(s); ruling d1 \
+                 requires one per-metric record per target",
+                records.len(),
+                if records.len() == 1 { "y" } else { "ies" },
+                report.target_metrics.len()
+            ));
+        }
+    }
+    if report.verdict == Verdict::Unverified {
+        problems.push(
+            "verdict \"unverified\" is reserved for lifted v1 reports carrying the \
+             lifted_from marker (ruling e2)"
+                .into(),
+        );
     }
 
     // Coverage: targets and collateral must partition the ten metrics.
@@ -846,18 +1039,23 @@ pub fn validate_efficacy(doc: &serde_json::Value) -> Vec<String> {
     // Arithmetic: recompute each stored figure from its own raw values.
     for (m, t) in &report.target_metrics {
         if t.baseline == 0.0 {
-            problems.push(format!(
-                "target {m} has baseline 0: gap_closed is undefined (awaiting ruling D1a, {ISSUE_D1})"
-            ));
-            continue;
-        }
-        let gap = (t.baseline - t.after) / t.baseline;
-        if (round3(gap) - t.gap_closed).abs() > 0.0005 + EPS {
-            problems.push(format!(
-                "target {m}: gap_closed {} does not match (baseline - after) / baseline = {}",
-                t.gap_closed,
-                round3(gap)
-            ));
+            // Ruling a1: G_m is defined as 0 when the baseline is 0.
+            if t.gap_closed != 0.0 {
+                problems.push(format!(
+                    "target {m}: baseline is 0, so gap_closed is 0 by definition \
+                     (ruling a1), not {}",
+                    t.gap_closed
+                ));
+            }
+        } else {
+            let gap = (t.baseline - t.after) / t.baseline;
+            if (round3(gap) - t.gap_closed).abs() > 0.0005 + EPS {
+                problems.push(format!(
+                    "target {m}: gap_closed {} does not match (baseline - after) / baseline = {}",
+                    t.gap_closed,
+                    round3(gap)
+                ));
+            }
         }
         if (round2(t.baseline - t.after) - t.mean_reduction).abs() > 0.005 + EPS {
             problems.push(format!(
@@ -903,85 +1101,78 @@ pub fn validate_efficacy(doc: &serde_json::Value) -> Vec<String> {
         }
     }
 
-    // Capability gate consistency (aggregate form, per the normative table).
+    // Capability gate consistency. The per-probe identity gate is
+    // normative when probes_regressed is recorded (ruling b1); the
+    // aggregate pass-rate gate is the degraded fallback.
     if report.capability.probes_total == 0 {
         problems.push("capability.probes_total must be > 0".into());
     } else {
-        let tol = 1.0 / f64::from(report.capability.probes_total);
-        let ok =
-            report.capability.pass_rate_after >= report.capability.pass_rate_before - tol - EPS;
+        let (gate, ok) = match &report.capability.probes_regressed {
+            Some(regressed) => ("per-probe identity", regressed.len() <= 1),
+            None => {
+                let tol = 1.0 / f64::from(report.capability.probes_total);
+                let ok = report.capability.pass_rate_after
+                    >= report.capability.pass_rate_before - tol - EPS;
+                ("aggregate pass-rate", ok)
+            }
+        };
         if ok != report.capability.capability_ok {
             problems.push(format!(
-                "capability_ok is {} but pass rates {} -> {} with tolerance 1/{} imply {}",
-                report.capability.capability_ok,
-                report.capability.pass_rate_before,
-                report.capability.pass_rate_after,
-                report.capability.probes_total,
-                ok
+                "capability_ok is {} but the {gate} gate implies {ok}",
+                report.capability.capability_ok
             ));
         }
     }
 
-    // Verdict recomputation (skipped for the lifted-report sentinel).
-    if report.verdict != Verdict::Unverified && problems.is_empty() {
-        let improved: Vec<bool> = report
+    // Verdict recomputation (only once the figures themselves check out).
+    if problems.is_empty() {
+        // All-targets rule (ruling c1): every declared target must
+        // improve, or the verdict is reject_null. A zero-baseline target
+        // (ruling a1) cannot improve and forces it.
+        let all_improved = report
             .target_metrics
             .values()
-            .map(|t| t.after < t.baseline - EPS)
+            .all(|t| t.baseline != 0.0 && t.after < t.baseline - EPS);
+        let max_c = report
+            .collateral_metrics
+            .values()
+            .map(|c| c.delta)
+            .fold(f64::NEG_INFINITY, f64::max);
+        let warned: Vec<&String> = report
+            .collateral_metrics
+            .iter()
+            .filter(|(_, c)| c.delta > COLLATERAL_ACCEPT + EPS && c.delta <= COLLATERAL_WARN + EPS)
+            .map(|(m, _)| m)
             .collect();
-        let all = improved.iter().all(|i| *i);
-        let none = improved.iter().all(|i| !*i);
-        if !all && !none {
-            problems.push(format!(
-                "targets disagree on improvement; the multi-target acceptance rule is \
-                 undecided (awaiting ruling D1c, {ISSUE_D1})"
-            ));
+        let expected = if !all_improved {
+            Verdict::RejectNull
+        } else if !report.capability.capability_ok {
+            Verdict::RejectCapability
+        } else if !report.collateral_metrics.is_empty() && max_c > COLLATERAL_WARN + EPS {
+            Verdict::RejectCollateral
+        } else if report.isa_delta >= 0.0 {
+            Verdict::RejectNet
+        } else if !warned.is_empty() {
+            Verdict::AcceptWithWarning
         } else {
-            let max_c = report
-                .collateral_metrics
-                .values()
-                .map(|c| c.delta)
-                .fold(f64::NEG_INFINITY, f64::max);
-            let warned: Vec<&String> = report
-                .collateral_metrics
-                .iter()
-                .filter(|(_, c)| {
-                    c.delta > COLLATERAL_ACCEPT + EPS && c.delta <= COLLATERAL_WARN + EPS
-                })
-                .map(|(m, _)| m)
-                .collect();
-            let expected = if none {
-                Verdict::RejectNull
-            } else if !report.capability.capability_ok {
-                Verdict::RejectCapability
-            } else if !report.collateral_metrics.is_empty() && max_c > COLLATERAL_WARN + EPS {
-                Verdict::RejectCollateral
-            } else if report.isa_delta >= 0.0 {
-                Verdict::RejectNet
-            } else if !warned.is_empty() {
-                Verdict::AcceptWithWarning
-            } else {
-                Verdict::Accept
-            };
-            if expected != report.verdict {
-                problems.push(format!(
-                    "verdict is {} but the acceptance rule implies {}",
-                    report.verdict.as_str(),
-                    expected.as_str()
-                ));
-            }
-            if report.verdict == Verdict::AcceptWithWarning {
-                match &report.verdict_notes {
-                    None => problems.push(
-                        "accept_with_warning requires verdict_notes naming the regressed metric"
-                            .into(),
-                    ),
-                    Some(notes) => {
-                        for m in warned {
-                            if !notes.contains(m.as_str()) {
-                                problems
-                                    .push(format!("verdict_notes must name regressed metric {m}"));
-                            }
+            Verdict::Accept
+        };
+        if expected != report.verdict {
+            problems.push(format!(
+                "verdict is {} but the acceptance rule implies {}",
+                report.verdict.as_str(),
+                expected.as_str()
+            ));
+        }
+        if report.verdict == Verdict::AcceptWithWarning {
+            match &report.verdict_notes {
+                None => problems.push(
+                    "accept_with_warning requires verdict_notes naming the regressed metric".into(),
+                ),
+                Some(notes) => {
+                    for m in warned {
+                        if !notes.contains(m.as_str()) {
+                            problems.push(format!("verdict_notes must name regressed metric {m}"));
                         }
                     }
                 }
@@ -989,6 +1180,74 @@ pub fn validate_efficacy(doc: &serde_json::Value) -> Vec<String> {
         }
     }
 
+    problems
+}
+
+/// Validate a lifted (v1-origin) efficacy document against the lift
+/// contract of ruling e2: the `lifted_from` marker, the `unverified`
+/// verdict, and an explicit `null` for every v2 field whose evidence
+/// does not exist in v1.
+fn validate_lifted(doc: &serde_json::Value) -> Vec<String> {
+    let Some(obj) = doc.as_object() else {
+        return vec!["lifted report must be a JSON object".into()];
+    };
+    let mut problems = Vec::new();
+    if obj.get("lifted_from").and_then(|v| v.as_str()) != Some(EFFICACY_V1_VERSION) {
+        problems.push(format!("lifted_from must be {EFFICACY_V1_VERSION:?}"));
+    }
+    if obj.get("version").and_then(|v| v.as_str()) != Some(EFFICACY_VERSION) {
+        problems.push(format!("version must be {EFFICACY_VERSION:?}"));
+    }
+    if obj.get("verdict").and_then(|v| v.as_str()) != Some("unverified") {
+        problems.push(
+            "a lifted report's verdict must be \"unverified\": the collateral and \
+             capability evidence needed for a real verdict does not exist in v1"
+                .into(),
+        );
+    }
+    for key in [
+        "scenario_set",
+        "collateral_metrics",
+        "capability",
+        "isa_delta",
+    ] {
+        match obj.get(key) {
+            Some(serde_json::Value::Null) => {}
+            Some(_) => problems.push(format!(
+                "{key} must be an explicit null in a lifted report: v1 carries no such \
+                 evidence and nothing may be synthesised (ruling e2)"
+            )),
+            None => problems.push(format!(
+                "{key} must be present as an explicit null in a lifted report (ruling e2)"
+            )),
+        }
+    }
+    match obj.get("target_metrics") {
+        Some(serde_json::Value::Object(metrics)) if !metrics.is_empty() => {
+            for (m, reading) in metrics {
+                if !known_metric(m) {
+                    problems.push(format!("unknown target metric {m}"));
+                }
+                let Some(fields) = reading.as_object() else {
+                    problems.push(format!("target {m} is not an object"));
+                    continue;
+                };
+                for key in ["baseline", "after", "gap_closed"] {
+                    if !matches!(fields.get(key), Some(serde_json::Value::Null)) {
+                        problems.push(format!(
+                            "target {m}: {key} must be an explicit null in a lifted \
+                             report (ruling e2)"
+                        ));
+                    }
+                }
+            }
+        }
+        _ => problems.push("target_metrics must be a non-empty object".into()),
+    }
+    if obj.get("frontier_record").is_some() || obj.get("frontier_records").is_some() {
+        problems
+            .push("a lifted report cannot reference a frontier record: none existed in v1".into());
+    }
     problems
 }
 

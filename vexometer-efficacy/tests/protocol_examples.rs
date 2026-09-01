@@ -2,9 +2,10 @@
 //! The efficacy protocol's own example documents are the fixtures.
 //!
 //! These tests read `vexometer/docs/EFFICACY-PROTOCOL.adoc`, extract its
-//! `vexometer-efficacy-v2` and `vexometer-frontier-v1` example JSON blocks,
-//! and require that (a) the validator accepts both, and (b) the evaluator
-//! reproduces the efficacy example byte-for-value from its raw inputs.
+//! example JSON blocks (efficacy-v2, lifted-v2, efficacy-v1, frontier-v1),
+//! and require that (a) the validator accepts them, (b) the evaluator
+//! reproduces the efficacy example byte-for-value from its raw inputs, and
+//! (c) the v1 lift reproduces the lifted example from the v1 example.
 //! If the protocol's examples and this implementation ever drift apart,
 //! these tests fail loudly.
 
@@ -17,12 +18,14 @@ fn protocol_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../vexometer/docs/EFFICACY-PROTOCOL.adoc")
 }
 
-/// Extract every `----`-delimited block that parses as JSON, keyed by its
-/// `version` field.
-fn protocol_examples() -> BTreeMap<String, serde_json::Value> {
+/// Extract every `----`-delimited block that parses as JSON and carries a
+/// `version` field. Returned in document order; several blocks can share a
+/// version (the main v2 example and the lifted one), so selection happens
+/// in the helpers below, not by version key.
+fn protocol_examples() -> Vec<serde_json::Value> {
     let text = std::fs::read_to_string(protocol_path())
         .expect("EFFICACY-PROTOCOL.adoc must be readable from the monorepo layout");
-    let mut examples = BTreeMap::new();
+    let mut examples = Vec::new();
     let mut block: Option<String> = None;
     for line in text.lines() {
         if line.trim_end() == "----" {
@@ -30,8 +33,8 @@ fn protocol_examples() -> BTreeMap<String, serde_json::Value> {
                 None => block = Some(String::new()),
                 Some(content) => {
                     if let Ok(v) = serde_json::from_str::<serde_json::Value>(&content) {
-                        if let Some(version) = v.get("version").and_then(|s| s.as_str()) {
-                            examples.insert(version.to_string(), v);
+                        if v.get("version").and_then(|s| s.as_str()).is_some() {
+                            examples.push(v);
                         }
                     }
                 }
@@ -44,16 +47,54 @@ fn protocol_examples() -> BTreeMap<String, serde_json::Value> {
     examples
 }
 
+fn only(matching: Vec<serde_json::Value>, what: &str) -> serde_json::Value {
+    assert_eq!(
+        matching.len(),
+        1,
+        "protocol must contain exactly one {what} example, found {}",
+        matching.len()
+    );
+    matching.into_iter().next().unwrap()
+}
+
+/// The main v2 example: version v2, no `lifted_from` marker.
 fn efficacy_example() -> serde_json::Value {
-    protocol_examples()
-        .remove(EFFICACY_VERSION)
-        .expect("protocol must contain a vexometer-efficacy-v2 example")
+    let matching = protocol_examples()
+        .into_iter()
+        .filter(|v| {
+            v.get("version").and_then(|s| s.as_str()) == Some(EFFICACY_VERSION)
+                && v.get("lifted_from").is_none()
+        })
+        .collect();
+    only(matching, "native vexometer-efficacy-v2")
+}
+
+/// The lifted example: version v2 with the `lifted_from` marker (ruling e2).
+fn lifted_example() -> serde_json::Value {
+    let matching = protocol_examples()
+        .into_iter()
+        .filter(|v| {
+            v.get("version").and_then(|s| s.as_str()) == Some(EFFICACY_VERSION)
+                && v.get("lifted_from").is_some()
+        })
+        .collect();
+    only(matching, "lifted vexometer-efficacy-v2")
+}
+
+fn v1_example() -> serde_json::Value {
+    let matching = protocol_examples()
+        .into_iter()
+        .filter(|v| v.get("version").and_then(|s| s.as_str()) == Some(EFFICACY_V1_VERSION))
+        .collect();
+    only(matching, "vexometer-efficacy-v1")
 }
 
 fn frontier_example() -> serde_json::Value {
-    protocol_examples()
-        .remove(FRONTIER_VERSION)
-        .expect("protocol must contain a vexometer-frontier-v1 example")
+    let matching = protocol_examples()
+        .into_iter()
+        .filter(|v| v.get("version").and_then(|s| s.as_str()) == Some(FRONTIER_VERSION))
+        .collect();
+    only(matching, "vexometer-frontier-v1")
 }
 
 // ---------------------------------------------------------------------------
@@ -66,6 +107,16 @@ fn protocol_efficacy_example_is_valid() {
     assert!(
         problems.is_empty(),
         "the protocol's own efficacy-v2 example failed validation:\n{}",
+        problems.join("\n")
+    );
+}
+
+#[test]
+fn protocol_lifted_example_is_valid() {
+    let problems = validate_efficacy(&lifted_example());
+    assert!(
+        problems.is_empty(),
+        "the protocol's own lifted example failed validation:\n{}",
         problems.join("\n")
     );
 }
@@ -137,16 +188,8 @@ fn example_after() -> Measurement {
     )
 }
 
-#[test]
-fn evaluator_reproduces_protocol_efficacy_example() {
-    let targets = vec!["LPS".to_string(), "TII".to_string()];
-    let eval = evaluate(&example_baseline(), &example_after(), &targets)
-        .expect("the protocol example inputs must evaluate cleanly");
-
-    assert_eq!(eval.verdict, Verdict::AcceptWithWarning);
-    assert_eq!(eval.warned_metrics, vec!["CII".to_string()]);
-
-    let meta = ReportMeta {
+fn example_meta() -> ReportMeta {
+    ReportMeta {
         satellite: "vex-verbosity-compressor".into(),
         evaluation_date: "2026-09-01".into(),
         sample_size: 500,
@@ -158,15 +201,26 @@ fn evaluator_reproduces_protocol_efficacy_example() {
              scenarios. Must be declared in satellite README."
                 .into(),
         ),
-        frontier_record: Some("frontier/LPS-2026-09-01.json".into()),
-    };
-    let (report, warnings) = build_report(&eval, &meta).expect("report must build");
+        frontier_records: Some(vec![
+            "frontier/LPS-2026-09-01.json".into(),
+            "frontier/TII-2026-09-01.json".into(),
+        ]),
+    }
+}
 
-    // Two targets with a singular frontier_record is exactly the D1d
-    // ambiguity; the tool must surface it as a warning, not guess.
+#[test]
+fn evaluator_reproduces_protocol_efficacy_example() {
+    let targets = vec!["LPS".to_string(), "TII".to_string()];
+    let eval = evaluate(&example_baseline(), &example_after(), &targets)
+        .expect("the protocol example inputs must evaluate cleanly");
+
+    assert_eq!(eval.verdict, Verdict::AcceptWithWarning);
+    assert_eq!(eval.warned_metrics, vec!["CII".to_string()]);
+
+    let (report, warnings) = build_report(&eval, &example_meta()).expect("report must build");
     assert!(
-        warnings.iter().any(|w| w.contains("D1d")),
-        "expected a D1d plurality warning, got: {warnings:?}"
+        warnings.is_empty(),
+        "a well-formed two-target report must emit no warnings, got: {warnings:?}"
     );
 
     let produced = serde_json::to_value(&report).expect("report must serialise");
@@ -182,37 +236,46 @@ fn evaluator_reproduces_protocol_efficacy_example() {
 }
 
 // ---------------------------------------------------------------------------
-// Open D1 questions must be refusals, not guesses
+// Ruling a1: zero-baseline targets are ineligible, not errors
 // ---------------------------------------------------------------------------
 
-fn expect_ruling(result: Result<Evaluation, EfficacyError>, question: &str) {
-    match result {
-        Err(EfficacyError::AwaitingRuling { question: q, .. }) => assert_eq!(q, question),
-        other => panic!("expected AwaitingRuling({question}), got {other:?}"),
-    }
-}
-
 #[test]
-fn zero_baseline_target_awaits_d1a() {
+fn zero_baseline_target_is_reject_null() {
     let mut baseline = example_baseline();
     baseline.metrics.insert(
         "LPS".into(),
         serde_json::from_value(serde_json::json!(0.0)).unwrap(),
     );
-    expect_ruling(
-        evaluate(&baseline, &example_after(), &["LPS".to_string()]),
-        "D1a",
+    let eval = evaluate(&baseline, &example_after(), &["LPS".to_string()])
+        .expect("a zero-baseline target must evaluate, not error (ruling a1)");
+    assert_eq!(eval.verdict, Verdict::RejectNull);
+    assert_eq!(eval.zero_baseline_targets, vec!["LPS".to_string()]);
+    assert_eq!(eval.targets["LPS"].gap_closed, 0.0);
+
+    // The report surfaces the design error as a diagnosable warning.
+    let mut meta = example_meta();
+    meta.verdict_notes = None;
+    meta.frontier_records = None;
+    let (report, warnings) = build_report(&eval, &meta).expect("report must build");
+    assert_eq!(report.verdict, Verdict::RejectNull);
+    assert!(
+        warnings.iter().any(|w| w.contains("ruling a1")),
+        "expected a ruling-a1 ineligibility warning, got: {warnings:?}"
     );
 }
 
+// ---------------------------------------------------------------------------
+// Ruling b1: the per-probe identity gate is normative
+// ---------------------------------------------------------------------------
+
 #[test]
-fn probe_gate_disagreement_awaits_d1b() {
+fn probe_identity_gate_outvotes_aggregate_rate() {
     let mut ids: Vec<String> = (1..=13).map(|i| format!("P{i:02}")).collect();
     ids.sort();
     let before: BTreeMap<String, bool> = ids.iter().map(|id| (id.clone(), id != "P13")).collect();
     // Two baseline-passing probes regress, one baseline-failing probe now
-    // passes: aggregate rate drops by exactly one probe (gate passes) while
-    // the identity gate counts two regressions (gate fails).
+    // passes: aggregate rate drops by exactly one probe (the fallback gate
+    // would pass) while the identity gate counts two regressions and fails.
     let after_r: BTreeMap<String, bool> = ids
         .iter()
         .map(|id| {
@@ -231,27 +294,214 @@ fn probe_gate_disagreement_awaits_d1b() {
     after.probes.passed = 11;
     after.probes.results = Some(after_r);
 
-    expect_ruling(
-        evaluate(&baseline, &after, &["LPS".to_string(), "TII".to_string()]),
-        "D1b",
+    let eval = evaluate(&baseline, &after, &["LPS".to_string(), "TII".to_string()])
+        .expect("per-probe disagreement must evaluate, not error (ruling b1)");
+    assert!(!eval.capability.capability_ok);
+    assert_eq!(
+        eval.capability.probes_regressed,
+        Some(vec!["P01".to_string(), "P02".to_string()])
     );
+    // Both targets improved, so the capability gate decides the verdict.
+    assert_eq!(eval.verdict, Verdict::RejectCapability);
 }
 
+// ---------------------------------------------------------------------------
+// Ruling c1: every declared target must improve
+// ---------------------------------------------------------------------------
+
 #[test]
-fn mixed_target_improvement_awaits_d1c() {
+fn mixed_target_improvement_is_reject_null() {
     let mut after = example_after();
     // TII regresses while LPS improves.
     after.metrics.insert(
         "TII".into(),
         serde_json::from_value(serde_json::json!(0.34)).unwrap(),
     );
-    expect_ruling(
-        evaluate(
-            &example_baseline(),
-            &after,
-            &["LPS".to_string(), "TII".to_string()],
-        ),
-        "D1c",
+    let eval = evaluate(
+        &example_baseline(),
+        &after,
+        &["LPS".to_string(), "TII".to_string()],
+    )
+    .expect("mixed improvement must evaluate, not error (ruling c1)");
+    assert_eq!(eval.verdict, Verdict::RejectNull);
+}
+
+// ---------------------------------------------------------------------------
+// Ruling d1: one frontier record per target metric
+// ---------------------------------------------------------------------------
+
+#[test]
+fn frontier_records_length_mismatch_is_a_hard_error() {
+    let targets = vec!["LPS".to_string(), "TII".to_string()];
+    let eval = evaluate(&example_baseline(), &example_after(), &targets).unwrap();
+    let mut meta = example_meta();
+    meta.frontier_records = Some(vec!["frontier/LPS-2026-09-01.json".into()]);
+    let err = build_report(&eval, &meta).unwrap_err();
+    assert!(
+        err.to_string().contains("ruling d1"),
+        "expected a ruling-d1 error, got: {err}"
+    );
+}
+
+#[test]
+fn validator_rejects_singular_frontier_record_key() {
+    let mut doc = efficacy_example();
+    doc.as_object_mut().unwrap().remove("frontier_records");
+    doc["frontier_record"] = serde_json::json!("frontier/LPS-2026-09-01.json");
+    let problems = validate_efficacy(&doc);
+    assert!(
+        problems.iter().any(|p| p.contains("frontier_records")),
+        "expected the pre-ruling singular key to be rejected, got: {problems:?}"
+    );
+}
+
+#[test]
+fn validator_rejects_frontier_records_length_mismatch() {
+    let mut doc = efficacy_example();
+    doc["frontier_records"] = serde_json::json!(["frontier/LPS-2026-09-01.json"]);
+    let problems = validate_efficacy(&doc);
+    assert!(
+        problems.iter().any(|p| p.contains("ruling d1")),
+        "expected a ruling-d1 length problem, got: {problems:?}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Ruling e2: the mechanical v1 lift
+// ---------------------------------------------------------------------------
+
+#[test]
+fn lift_reproduces_protocol_lifted_example() {
+    let lifted = lift_v1(&v1_example()).expect("the protocol's v1 example must lift");
+    assert_eq!(
+        lifted,
+        lifted_example(),
+        "the lift output must equal the protocol's lifted example value-for-value"
+    );
+}
+
+#[test]
+fn lift_rejects_non_v1_input() {
+    let err = lift_v1(&efficacy_example()).unwrap_err();
+    assert!(
+        err.to_string().contains(EFFICACY_V1_VERSION),
+        "expected a version complaint, got: {err}"
+    );
+}
+
+#[test]
+fn lift_rejects_v1_metric_smuggling_v2_evidence() {
+    let mut doc = v1_example();
+    doc["metrics"]["CII"]["baseline"] = serde_json::json!(0.31);
+    let err = lift_v1(&doc).unwrap_err();
+    assert!(
+        err.to_string().contains("ruling e2") && err.to_string().contains("baseline"),
+        "expected a pre-existing v2 evidence key to be refused at lift time, got: {err}"
+    );
+}
+
+#[test]
+fn lift_rejects_v1_report_with_unmapped_top_level_key() {
+    let mut doc = v1_example();
+    doc["verdict"] = serde_json::json!("accept");
+    let err = lift_v1(&doc).unwrap_err();
+    assert!(
+        err.to_string().contains("ruling e2") && err.to_string().contains("verdict"),
+        "expected a key outside the v1 mapping table to be refused, got: {err}"
+    );
+}
+
+#[test]
+fn native_report_cannot_claim_unverified() {
+    let mut doc = efficacy_example();
+    doc["verdict"] = serde_json::json!("unverified");
+    let problems = validate_efficacy(&doc);
+    assert!(
+        problems.iter().any(|p| p.contains("lifted")),
+        "expected unverified to be reserved for lifted reports, got: {problems:?}"
+    );
+}
+
+#[test]
+fn lifted_report_cannot_carry_synthesised_evidence() {
+    let mut doc = lifted_example();
+    doc["capability"] = serde_json::json!({"capability_ok": true});
+    let problems = validate_efficacy(&doc);
+    assert!(
+        problems.iter().any(|p| p.contains("ruling e2")),
+        "expected synthesised capability evidence to be rejected, got: {problems:?}"
+    );
+}
+
+#[test]
+fn lifted_report_cannot_reference_a_frontier_record() {
+    let mut doc = lifted_example();
+    doc["frontier_records"] = serde_json::json!(["frontier/CII-2025-01-15.json"]);
+    let problems = validate_efficacy(&doc);
+    assert!(
+        problems.iter().any(|p| p.contains("frontier")),
+        "expected the frontier reference to be rejected, got: {problems:?}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Ruling f1: held-out scenario sets
+// ---------------------------------------------------------------------------
+
+fn test_registry() -> serde_json::Value {
+    serde_json::json!({
+        "version": SCENARIO_REGISTRY_VERSION,
+        "partitions": [{
+            "name": "compressor-corpus",
+            "tuning_set": "sha256:aaaa",
+            "held_out_set": "sha256:bbbb"
+        }]
+    })
+}
+
+#[test]
+fn shipped_registry_is_valid_and_empty() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../vexometer/data/scenario_sets/registry.json");
+    let text = std::fs::read_to_string(&path).expect("shipped registry must exist (ruling f1)");
+    let registry: serde_json::Value = serde_json::from_str(&text).expect("registry must parse");
+    assert_eq!(
+        registry.get("version").and_then(|v| v.as_str()),
+        Some(SCENARIO_REGISTRY_VERSION)
+    );
+    // Empty registry enforces nothing: no corpus exists yet, and inventing
+    // partition hashes would be exactly the fabrication f1 forbids.
+    let problems = check_scenario_registry(&registry, "sha256:6b2f...");
+    assert!(
+        problems.is_empty(),
+        "empty registry must enforce nothing: {problems:?}"
+    );
+}
+
+#[test]
+fn tuning_set_hash_is_always_a_violation() {
+    let problems = check_scenario_registry(&test_registry(), "sha256:aaaa");
+    assert!(
+        problems.iter().any(|p| p.contains("held-out")),
+        "expected a tuning-partition violation, got: {problems:?}"
+    );
+}
+
+#[test]
+fn unknown_hash_against_populated_registry_is_a_violation() {
+    let problems = check_scenario_registry(&test_registry(), "sha256:cccc");
+    assert!(
+        problems.iter().any(|p| p.contains("ruling f1")),
+        "expected an unregistered-set violation, got: {problems:?}"
+    );
+}
+
+#[test]
+fn held_out_hash_is_clean() {
+    let problems = check_scenario_registry(&test_registry(), "sha256:bbbb");
+    assert!(
+        problems.is_empty(),
+        "held-out set must be clean: {problems:?}"
     );
 }
 
@@ -431,6 +681,17 @@ fn validator_catches_wrong_verdict() {
     assert!(
         problems.iter().any(|p| p.contains("acceptance rule")),
         "expected a verdict mismatch, got: {problems:?}"
+    );
+}
+
+#[test]
+fn validator_catches_capability_gate_mismatch() {
+    let mut doc = efficacy_example();
+    doc["capability"]["capability_ok"] = serde_json::json!(false);
+    let problems = validate_efficacy(&doc);
+    assert!(
+        problems.iter().any(|p| p.contains("aggregate pass-rate")),
+        "expected the fallback gate to contradict capability_ok, got: {problems:?}"
     );
 }
 
