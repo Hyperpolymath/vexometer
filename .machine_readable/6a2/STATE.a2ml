@@ -5,13 +5,16 @@
 [metadata]
 project = "vexometer"
 version = "0.1.0"
-last-updated = "2026-04-04"
+last-updated = "2026-09-01"
 status = "active"
 
 [project-context]
 name = "vexometer"
+# NOTE: 25 here vs ~70% on the TOPOLOGY.adoc dashboard — neither is a measured
+# value; reconciliation is debt D3 in docs/sitrep-2026-09-01.adoc. Kept as-is
+# until a figure exists that names the command that produced it.
 completion-percentage = 25
-phase = "CRG C achieved for both sub-projects (2026-04-04)"
+phase = "CRG C achieved for both sub-projects (2026-04-04); CI gates first green 2026-09-01"
 
 [crg-status]
 lazy-eliminator = "CRG C: 55 tests (unit+E2E+property+aspect), benchmarks baselined"
@@ -35,3 +38,5 @@ ada-contract-tests = "9 (CII bounds, ISA bounds, completeness)"
 ada-aspect-tests = "16 (empty input, long text, saturation, false-positive, probe invariants)"
 ada-benchmarks = "2 suites (10000 iterations each: pattern analysis + CII)"
 ada-total = "1282 assertions, 100% pass rate"
+# NOTE: counts assertion EXECUTIONS (p2p loops amplify 4 properties x 100
+# iterations), not static assertion sites (~55). See TEST-NEEDS.adoc.
