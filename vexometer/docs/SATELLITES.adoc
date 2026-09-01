@@ -269,6 +269,12 @@ vex-SATELLITE_NAME/
 
 == Satellite ECOSYSTEM.scm Template
 
+NOTE: The `.scm` state-file format shown below is retired — the estate
+migrated machine-readable metadata to A2ML under `.machine_readable/6a2/`
+(see this repository's `ECOSYSTEM.a2ml` / `META.a2ml` / `STATE.a2ml`). The
+template is kept for its *content* shape; a new satellite should emit the
+equivalent A2ML.
+
 [source,scheme]
 ----
 ;; ECOSYSTEM.scm - Satellite Template
@@ -421,5 +427,5 @@ All satellites must follow:
 
 * link:METRICS.adoc[Metrics Reference] - All 10 ISA metrics (vexometer identifiers)
 * link:EFFICACY-PROTOCOL.adoc[Efficacy Protocol] - Acceptance rule and frontier records extending vexometer-efficacy-v1
-* link:../ECOSYSTEM.scm[Ecosystem Map] - Satellite relationships
-* link:../META.scm[Project Metadata] - ISA meta-information
+* link:../../.machine_readable/6a2/ECOSYSTEM.a2ml[Ecosystem Map] - Satellite relationships
+* link:../../.machine_readable/6a2/META.a2ml[Project Metadata] - ISA meta-information
