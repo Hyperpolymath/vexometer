@@ -133,6 +133,12 @@ Both sub-projects now at CRG Grade B:
 |vexometer (Ada) |1282 |CRG C complete 2026-04-04
 |===
 
+NOTE: The Ada figure counts assertion _executions_, not test sites: the four
+P2P property loops run 100 iterations each (420 of the 1282), so the static
+assertion-site count is roughly 55. The suite prints the same number
+("All 1282 vexometer Ada tests passed (1282 assertions)"). A site-based
+recount is part of debt item D3 in `docs/sitrep-2026-09-01.adoc`.
+
 === Remaining Work (Ada/Idris2 ABI - P2 after CRG C)
 
 ==== P2P Tests (Ada)
