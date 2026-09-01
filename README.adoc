@@ -60,7 +60,7 @@ just build-vext
 just must-all
 just bench-vexometer
 just trust-generate
-just trust-verify
+just trust-manifest-verify
 just test-all
 just ci-gate
 just build-all
