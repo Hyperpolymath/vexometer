@@ -128,6 +128,18 @@ satellite README.
 |Does not advance
 |===
 
+*Verdict precedence*: more than one reject condition can hold for a single
+attempt. When they do, report the most fundamental cause, in this order:
+
+[source]
+----
+reject_null > reject_capability > reject_collateral > reject_net
+----
+
+A verdict is therefore always a single value, and two implementations of
+this protocol assign the same verdict to the same data. Note that this is
+*not* the order the conditions appear in the table above.
+
 *Provisional constants*: the `0.02` / `0.05` collateral thresholds and the
 one-probe capability tolerance are stated so that evaluations are
 reproducible today. They are expected to be recalibrated once enough
@@ -242,7 +254,7 @@ readable. v2 adds three fields: `collateral_metrics` (all ten), a
     "pass_rate_after": 0.923,
     "capability_ok": true
   },
-  "isa_delta": -2.61,
+  "isa_delta": -2.71,
   "verdict": "accept_with_warning",
   "verdict_notes": "CII regressed by 0.04 -- compression removes content in long-form code scenarios. Must be declared in satellite README.",
   "methodology": "A/B testing with vexometer validation",
@@ -321,7 +333,7 @@ discarded on the way.
       "target_after": 0.17,
       "gap_closed": 0.585,
       "collateral_max": { "metric": "CII", "delta": 0.04 },
-      "isa_delta": -2.61,
+      "isa_delta": -2.71,
       "capability_ok": true,
       "verdict": "accept_with_warning",
       "frontier": 0.585
@@ -441,6 +453,8 @@ just efficacy-attempt --satellite NAME --config CFG \
     --baseline baseline.json --frontier frontier/METRIC.json
 
 # Emit a vexometer-efficacy-v2 report from an accepted attempt
+# (supersedes the --before/--after signature sketched in SATELLITES.adoc;
+#  neither is implemented yet)
 just efficacy-report --frontier frontier/METRIC.json --output EFFICACY.adoc
 
 # Render the ten-panel frontier plot
