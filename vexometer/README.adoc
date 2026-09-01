@@ -196,6 +196,7 @@ vexometer/
 |   +-- SPECIFICATION.md           # Full technical specification
 |   +-- METRICS.adoc               # All 10 metrics detailed
 |   +-- SATELLITES.adoc            # Intervention satellite architecture
+|   +-- EFFICACY-PROTOCOL.adoc     # Satellite acceptance and frontier records
 |   +-- letter_lmsys_arena.md      # LMSYS Arena proposal
 +-- alire.toml                     # Alire package manifest
 +-- vexometer.gpr                  # GNAT project file
@@ -405,6 +406,7 @@ Priority areas:
 * link:docs/SPECIFICATION.md[SPECIFICATION.md] - Full technical specification
 * link:docs/METRICS.adoc[METRICS.adoc] - Detailed metric reference
 * link:docs/SATELLITES.adoc[SATELLITES.adoc] - Satellite architecture
+* link:docs/EFFICACY-PROTOCOL.adoc[EFFICACY-PROTOCOL.adoc] - How satellite efficacy claims are accepted or rejected
 * link:CLAUDE.md[CLAUDE.md] - AI assistant guidance
 
 == License

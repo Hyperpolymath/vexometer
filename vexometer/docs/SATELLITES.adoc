@@ -414,5 +414,6 @@ All satellites must follow:
 == See Also
 
 * link:METRICS.adoc[Metrics Reference] - All 10 ISA metrics (vexometer identifiers)
+* link:EFFICACY-PROTOCOL.adoc[Efficacy Protocol] - Acceptance rule and frontier records extending vexometer-efficacy-v1
 * link:../ECOSYSTEM.scm[Ecosystem Map] - Satellite relationships
 * link:../META.scm[Project Metadata] - ISA meta-information
