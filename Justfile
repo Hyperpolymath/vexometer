@@ -73,7 +73,9 @@ trust-generate:
     ./scripts/trust/generate-manifest.sh
 
 # Verify trust manifests for all components
-trust-verify:
+# (named trust-manifest-verify: contractile.just already defines trust-verify,
+#  and a duplicate recipe name kills every `just` invocation at parse time)
+trust-manifest-verify:
     ./scripts/trust/verify-manifest.sh
 
 # Sign trust manifests (minisign or gpg required)
@@ -85,7 +87,7 @@ trust-rotate:
     ./scripts/trust/rotate-trustfile.sh
 
 # Full CI-equivalent local gate
-ci-gate: must-all trust-verify test-all
+ci-gate: must-all trust-manifest-verify test-all
 
 # Run panic-attacker pre-commit scan
 assail:

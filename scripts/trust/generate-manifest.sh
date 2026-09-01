@@ -29,7 +29,7 @@ for component in "${components[@]}"; do
   inputs=(
     "README.adoc"
     "ROADMAP.adoc"
-    "SECURITY.md"
+    "SECURITY.adoc"
     "contractiles/must/Mustfile"
     "contractiles/trust/Trustfile.a2ml"
   )
