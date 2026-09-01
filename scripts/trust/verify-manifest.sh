@@ -12,6 +12,7 @@ else
     "vext-email-gateway"
     "vexometer-satellites"
     "lazy-eliminator"
+    "vexometer-efficacy"
     "satellite-template"
   )
 fi

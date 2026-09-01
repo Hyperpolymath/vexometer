@@ -1,0 +1,139 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+= vexometer-efficacy
+:toc:
+
+Efficacy evaluator and frontier-record writer for the vexometer ISA
+efficacy protocol. This tool is the executable half of
+link:../vexometer/docs/EFFICACY-PROTOCOL.adoc[EFFICACY-PROTOCOL.adoc]:
+it computes `G_m`, collateral deltas, `D_ISA`, and the capability proxy,
+applies the six-verdict acceptance rule with its precedence order, emits
+`vexometer-efficacy-v2` reports, maintains `vexometer-frontier-v1`
+records under the monotone-frontier invariant, and validates both
+document shapes by recomputing every derived number.
+
+== Design rule: refuse where the protocol is undecided
+
+Six normative questions are open in
+https://github.com/hyperpolymath/vexometer/issues/69[issue #69] (debt
+item D1). Where one of them bites, this tool *refuses with an explicit
+error* naming the question rather than silently picking a semantic:
+
+[cols="1,4,2",options="header"]
+|===
+|Question |When it bites |Behaviour
+
+|D1a
+|A declared target metric has baseline `B_m = 0` (division by zero in
+`G_m`)
+|Hard refusal, exit code 2
+
+|D1b
+|Per-probe results are supplied for both measurements and the aggregate
+pass-rate gate disagrees with the per-probe identity gate
+|Hard refusal, exit code 2
+
+|D1c
+|Multiple targets are declared and some improved while others did not
+|Hard refusal, exit code 2
+
+|D1d
+|Multiple targets with the singular `frontier_record` field
+|Report is emitted, with a warning on stderr
+
+|D1e
+|v1→v2 lifting
+|Unimplemented — no `lift` subcommand exists
+|===
+
+After the rulings land and the protocol is amended to v2.1, these
+refusals are replaced by the ruled semantics.
+
+== The protocol's examples are the test fixtures
+
+The integration tests read `../vexometer/docs/EFFICACY-PROTOCOL.adoc`
+at build time, extract its example JSON blocks, and require that the
+validator accepts both and that the evaluator reproduces the efficacy
+example value-for-value from raw inputs (including `D_ISA = -2.71`
+under the default category weights in
+link:../vexometer/docs/METRICS.adoc[METRICS.adoc]). If the protocol and
+this implementation drift apart, `cargo test` fails loudly.
+
+== CLI
+
+[source,console]
+----
+$ vexometer-efficacy report --baseline baseline.json --after after.json \
+    --targets LPS,TII --satellite vex-verbosity-compressor \
+    --sample-size 500 --output report.json \
+    [--methodology "A/B testing with vexometer validation"] \
+    [--notes "..."] [--frontier-record frontier/LPS-....json] \
+    [--traces-available true|false] [--date YYYY-MM-DD] [--scenario-set SHA]
+
+$ vexometer-efficacy attempt --frontier frontier/LPS-2026-09-01.json \
+    --baseline baseline.json --after after.json --targets LPS --metric LPS \
+    --satellite vex-verbosity-compressor --config config-042 \
+    [--model-profile STR] [--timestamp ISO8601] [--scenario-set SHA] \
+    [--baseline-isa 4.63]   # required when creating a new frontier record
+
+$ vexometer-efficacy validate report.json frontier.json ...
+----
+
+Bare `validate` arguments are routed by each document's own `version`
+field; `--efficacy FILE` / `--frontier FILE` force a kind when a
+document lacks one. The same commands are exposed at the monorepo root
+as `just efficacy-report`, `just efficacy-attempt`, and
+`just efficacy-validate`.
+
+Exit codes: `0` success (any verdict, including rejections — a computed
+rejection is a successful evaluation), `1` usage or data error, `2` open
+D1 ruling required, `3` validation failed.
+
+== Measurement input format
+
+Both `--baseline` and `--after` take a JSON document of one measurement
+pass over one content-addressed scenario set:
+
+[source,json]
+----
+{
+  "scenario_set": "sha256:6b2f...",
+  "metrics": {
+    "LPS": 0.41,
+    "TII": { "score": 0.33, "std_dev": 0.07, "confidence": 0.95, "p_value": 0.004 },
+    "EFR": 0.19, "PQ": 0.28, "TAI": 0.15, "ICS": 0.22,
+    "CII": 0.31, "SRS": 0.26, "SFR": 0.24, "RCI": 0.30
+  },
+  "probes": {
+    "total": 13,
+    "passed": 12,
+    "results": { "PROBE-CAPABILITY-001": true, "...": true }
+  }
+}
+----
+
+* `metrics` must cover exactly the ten ISA metrics. A bare number and a
+  `{score, std_dev, confidence, p_value}` object are both accepted;
+  statistics are carried into the report when present.
+* `probes.results` (per-probe outcomes) is optional; when both
+  measurements carry it, the per-probe identity gate is cross-checked
+  against the aggregate gate (see D1b above).
+* `scenario_set` must match between baseline and after — tuning against
+  a different set than you score on is exactly what the protocol's
+  audit trail exists to catch.
+
+== Building and testing
+
+From this directory (or via the monorepo Justfile):
+
+[source,console]
+----
+$ cargo build --release          # or: just build-efficacy
+$ cargo test                     # or: just test-efficacy
+----
+
+The only dependencies are `serde` and `serde_json`; `Cargo.lock` is
+committed.
+
+== Licence
+
+Code MPL-2.0, documentation CC-BY-SA-4.0, per repository policy.

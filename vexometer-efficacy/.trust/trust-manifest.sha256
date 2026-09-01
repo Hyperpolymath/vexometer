@@ -1,0 +1,8 @@
+# trust-manifest v1
+# component=vexometer-efficacy
+# generated_at=2026-09-01T15:55:49Z
+3ea7341c2a55bea766ffa7c34879168001f701982c3427c8f3ff874b4b907c3e  README.adoc
+99bf8c708656fee9beba0c4812aac55a6fd3b4fdaaa989a9b6a13b7dc3c4b5ba  ROADMAP.adoc
+b1245e468709a6c75e530412da6480943bf53c836df0ca108aaf39843886e6cb  SECURITY.adoc
+9c80ff2e60fdb772a0479b46b140e0ce08e4e37bc39e6d7e257aa3d5d1281d18  contractiles/must/Mustfile
+3ac4606620454d844d8f0d0580fe32072a8a0b6821c93a74df64c3ed597e3640  contractiles/trust/Trustfile.a2ml
