@@ -5,6 +5,12 @@
 # Default recipe: list available commands
 import? "contractile.just"
 
+# Pass recipe arguments through as shell positionals ("$@") so quoting
+# survives; the per-recipe [positional-arguments] attribute needs just >= 1.29,
+# but CI installs just from apt (ubuntu-latest ships 1.21) and an unknown
+# attribute is a parse error that kills every recipe.
+set positional-arguments := true
+
 default:
     @just --list
 
@@ -20,8 +26,12 @@ build-vext:
 build-lazy-eliminator:
     cd lazy-eliminator && just build
 
+# Build the efficacy evaluator (Rust)
+build-efficacy:
+    cd vexometer-efficacy && cargo build --release
+
 # Build all components
-build-all: build-vexometer build-vext build-lazy-eliminator
+build-all: build-vexometer build-vext build-lazy-eliminator build-efficacy
 
 # Run vexometer tests
 test-vexometer:
@@ -39,13 +49,29 @@ test-vext:
 test-lazy-eliminator:
     cd lazy-eliminator && just test
 
+# Run efficacy-evaluator tests (protocol examples are the fixtures)
+test-efficacy:
+    cd vexometer-efficacy && (cargo test --offline || cargo test)
+
 # vext-email-gateway status check
 test-vext-email-gateway:
     @echo "vext-email-gateway is currently prototype-stage and not part of the required test-all gate."
     @echo "See vext-email-gateway/README.adoc and ROADMAP.adoc for current wiring status."
 
 # Run all tests
-test-all: test-vexometer test-vext test-lazy-eliminator
+test-all: test-vexometer test-vext test-lazy-eliminator test-efficacy
+
+# Evaluate a satellite run and emit a vexometer-efficacy-v2 report
+efficacy-report *ARGS:
+    cd vexometer-efficacy && cargo run --release --quiet -- report "$@"
+
+# Record a search attempt in a vexometer-frontier-v1 record
+efficacy-attempt *ARGS:
+    cd vexometer-efficacy && cargo run --release --quiet -- attempt "$@"
+
+# Validate efficacy reports and frontier records by recomputation
+efficacy-validate *ARGS:
+    cd vexometer-efficacy && cargo run --release --quiet -- validate "$@"
 
 # Run benchmark suites
 bench-all: bench-vexometer
@@ -53,16 +79,19 @@ bench-all: bench-vexometer
 # Clean all build artifacts
 clean:
     cd vext && cargo clean
+    cd vexometer-efficacy && cargo clean
     cd vexometer && just clean || true
     cd lazy-eliminator && just clean || true
 
 # Check formatting across Rust components
 fmt-check:
     cd vext && cargo fmt -- --check
+    cd vexometer-efficacy && cargo fmt -- --check
 
 # Run clippy on Rust components
 lint:
     cd vext && cargo clippy -- -D warnings
+    cd vexometer-efficacy && cargo clippy --all-targets -- -D warnings
 
 # Run contractiles Mustfile invariants across all components
 must-all:
