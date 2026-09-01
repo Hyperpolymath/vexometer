@@ -784,7 +784,9 @@ impl FrontierRecord {
             .iter()
             .filter(|a| a.verdict.is_reject())
             .count() as u64;
-        Ok(self.attempts.last().unwrap())
+        self.attempts
+            .last()
+            .ok_or_else(|| EfficacyError::Data("internal: attempts empty after push".into()))
     }
 }
 
