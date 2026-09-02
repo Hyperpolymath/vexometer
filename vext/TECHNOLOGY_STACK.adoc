@@ -274,4 +274,4 @@ See `+.migration/PYTHON_TO_RUST_RESCRIPT.md+` for migration details.
 === License
 
 * *SPDX Identifier*: `+MPL-2.0+`
-* *Style*: Palimpsest dual licensing
+* *Style*: MPL-2.0 (code) + CC-BY-SA-4.0 (docs)

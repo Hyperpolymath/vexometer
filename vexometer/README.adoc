@@ -4,7 +4,7 @@
 
 = The Vexometer: Irritation Surface Analyser (ISA) for LLMs and related tools
 
-image:https://img.shields.io/badge/License-PMPL--1.0--or--later-6366f1?style=flat&labelColor=4338ca[MPL-2.0,link="https://github.com/hyperpolymath/palimpsest-license"]
+image:https://img.shields.io/badge/License-MPL--2.0-blue.svg[License: MPL-2.0,link="LICENSE"]
 
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 v0.1.0
@@ -411,8 +411,8 @@ Priority areas:
 
 == License
 
-image:https://img.shields.io/badge/License-PMPL--1.0--or--later-6366f1?style=flat&labelColor=4338ca[MPL-2.0,link="https://github.com/hyperpolymath/palimpsest-license"]
+image:https://img.shields.io/badge/License-MPL--2.0-blue.svg[License: MPL-2.0,link="LICENSE"]
 
-This project is licensed under MPL-2.0 (Palimpsest License). See link:LICENSE[LICENSE] for the full license text.
+This project is licensed under MPL-2.0 (code) and CC-BY-SA-4.0 (documentation). See link:LICENSE[LICENSE] for the full MPL-2.0 text.
 
 This is free software; you are free to change and redistribute it. There is NO WARRANTY, to the extent permitted by law.
