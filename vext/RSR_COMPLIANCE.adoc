@@ -414,7 +414,13 @@ Framework]
 
 ==== Appendix B: SPDX Identifiers
 
-All source files include:
+Code files include:
+
+....
+SPDX-License-Identifier: MPL-2.0
+....
+
+Documentation files include:
 
 ....
 SPDX-License-Identifier: CC-BY-SA-4.0

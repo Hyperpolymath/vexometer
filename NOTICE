@@ -12,5 +12,6 @@ The root LICENSE file and each component's LICENSE file contain the
 standard Mozilla Public License 2.0 text. Canonical licence texts are
 kept in the LICENSES/ directory.
 
-Per-file licensing is declared by SPDX headers on line 1: source files
-carry MPL-2.0; documentation files carry CC-BY-SA-4.0.
+Per-file licensing is declared by SPDX headers at the top of each file
+(line 1, or the first line the format permits): source files carry
+MPL-2.0; documentation files carry CC-BY-SA-4.0.

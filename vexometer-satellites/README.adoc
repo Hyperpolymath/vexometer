@@ -375,7 +375,7 @@ Priority areas:
 
 == License
 
-MPL-2.0. See link:LICENSE[LICENSE].
+MPL-2.0 for code — see link:LICENSE[LICENSE]. Documentation is CC-BY-SA-4.0.
 
 Individual satellites may use different licenses (check each satellite's LICENSE file).
 

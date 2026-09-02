@@ -1,7 +1,7 @@
 # trust-manifest v1
 # component=satellite-template
-# generated_at=2026-09-02T06:17:43Z
-77be12c8d237ca438b0b85a08f7306bd10fba48eda45f923c753b0d9e5a9dc03  README.adoc
+# generated_at=2026-09-02T06:29:19Z
+b6b6a08c8d7272ebc91754b5a8c5e66bca4da84422e9231144712f656a7851d8  README.adoc
 5a62f5611eecfafa43d931b4d7e0917fa1b0f0275fdfd74c61415ab635e72805  ROADMAP.adoc
 38ccfdc1a04c12616acfb030522358383702184480f52507a5f72fccccbe76b9  SECURITY.adoc
 4f54a64f50a9dddbf221f2cdbd813de81dfe7fdc8f2294e41d97289519779b0e  contractiles/must/Mustfile
