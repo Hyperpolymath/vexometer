@@ -36,6 +36,9 @@ for component in "${components[@]}"; do
     "contractiles/trust/Trustfile.a2ml"
   )
 
+  if [[ -f "$component_dir/contractiles/dust/Dustfile" ]]; then
+    inputs+=("contractiles/dust/Dustfile")
+  fi
   if [[ -f "$component_dir/RSR_OUTLINE.adoc" ]]; then
     inputs+=("RSR_OUTLINE.adoc")
   fi

@@ -40,6 +40,10 @@ v0.3 roadmap item.
 
 === Measurement Process (planned)
 
+Both traces MUST be generated over the same registered scenario partition
+(ruling f1) with identical scenario IDs — a before/after pair drawn from
+different scenario sets measures the sets, not the compressor.
+
 1. Generate a vexometer trace for the original content (`before/`)
 2. Apply vex-verbosity-compressor
 3. Generate a vexometer trace for the modified content (`after/`)

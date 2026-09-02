@@ -9,12 +9,17 @@ everyone.
 
 === Our Standards
 
-*Positive behavior:* * Using welcoming language * Being respectful of
-differing viewpoints * Accepting constructive criticism * Focusing on
-what is best for the community
+*Positive behavior:*
 
-*Unacceptable behavior:* * Harassment, trolling, or personal attacks *
-Publishing private information without permission
+* Using welcoming language
+* Being respectful of differing viewpoints
+* Accepting constructive criticism
+* Focusing on what is best for the community
+
+*Unacceptable behavior:*
+
+* Harassment, trolling, or personal attacks
+* Publishing private information without permission
 
 === Enforcement
 

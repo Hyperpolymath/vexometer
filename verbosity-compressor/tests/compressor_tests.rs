@@ -127,6 +127,34 @@ fn emoji_run_is_one_finding_and_not_stripped() {
 }
 
 #[test]
+fn compress_preserves_untouched_formatting_byte_for_byte() {
+    // No findings anywhere: indentation, double spaces, and blank-line runs
+    // must survive unchanged — compress may not act as a global reformatter.
+    let text = "fn main() {\n    let a = 1;\n\n\n    let b = 2;  // spaced\n}\n";
+    let result = compress(text);
+    assert!(result.removed.is_empty());
+    assert_eq!(result.output, text);
+}
+
+#[test]
+fn removing_a_whole_line_filler_drops_the_line() {
+    let result = compress("The fix works.\nBasically.\nDone.");
+    assert_eq!(result.output, "The fix works.\nDone.");
+}
+
+#[test]
+fn removal_at_end_of_text_leaves_no_dangling_space() {
+    let result = compress("Foo bar. Great question!");
+    assert_eq!(result.output, "Foo bar.");
+}
+
+#[test]
+fn indentation_survives_a_removal_elsewhere_in_the_text() {
+    let result = compress("Basically, run:\n    cargo test\n");
+    assert_eq!(result.output, "run:\n    cargo test\n");
+}
+
+#[test]
 fn empty_input_scores_zero_and_compresses_to_empty() {
     let analysis = analyse("");
     assert_eq!(analysis.word_count, 0);

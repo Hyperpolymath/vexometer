@@ -9,7 +9,7 @@ detection and filler-phrase stripping.
 
 == Overview
 
-`vex-verbosity-compressor` is the first ISA satellite scaffolded from
+`vex-verbosity-compressor` is the first ISA (formerly Vexometer) satellite scaffolded from
 `satellite-template` (owner ruling D6, 2026-09-02). It detects the
 linguistic pathology classes enumerated by the vexometer LPS metric
 (link:../vexometer/docs/METRICS.adoc[METRICS.adoc]) — sycophancy density,

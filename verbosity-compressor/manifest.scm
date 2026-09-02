@@ -14,6 +14,12 @@
     "bash"
     "coreutils"
 
+    ;; Rust toolchain (this satellite is a Rust crate)
+    "rust"
+    "rust:cargo"
+    "rust:tools"
+    "gcc-toolchain"
+
     ;; Documentation
     "asciidoctor"
     "pandoc"

@@ -209,7 +209,9 @@ pub fn analyse(text: &str) -> Analysis {
 }
 
 /// Remove every strippable finding from `text`, consuming any punctuation and
-/// whitespace immediately after each removed span, then tidy whitespace.
+/// whitespace immediately after each removed span and repairing the seam each
+/// removal leaves behind. Text away from removed spans is preserved
+/// byte-for-byte — indentation, deliberate spacing, and blank lines survive.
 ///
 /// Known v0.1 limitation (see ROADMAP): a stripped sentence-initial filler
 /// leaves the following word lowercase — no recapitalisation is attempted.
@@ -219,13 +221,15 @@ pub fn compress(text: &str) -> Compressed {
         findings.into_iter().partition(|f| f.strippable);
 
     let mut output = text.to_string();
-    // Right-to-left so earlier byte offsets stay valid.
+    // Right-to-left so earlier byte offsets stay valid; each removal cleans
+    // only its own seam.
     for finding in removed.iter().rev() {
         let after = consume_trailing(&output, finding.end);
         output.replace_range(finding.start..after, "");
+        clean_seam(&mut output, finding.start);
     }
     Compressed {
-        output: tidy_whitespace(&output),
+        output,
         removed,
         retained,
     }
@@ -245,35 +249,36 @@ fn consume_trailing(text: &str, end: usize) -> usize {
     i
 }
 
-/// Collapse space/tab runs to one space, drop spaces before closing
-/// punctuation, trim trailing spaces per line, and collapse 3+ newlines to 2.
-fn tidy_whitespace(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    let mut pending_space = false;
-    let mut newline_run = 0usize;
-    for ch in text.chars() {
-        match ch {
-            ' ' | '\t' => pending_space = true,
-            '\n' => {
-                pending_space = false;
-                newline_run += 1;
-                if newline_run <= 2 {
-                    out.push('\n');
-                }
-            }
-            _ => {
-                newline_run = 0;
-                if pending_space {
-                    if !matches!(ch, '.' | ',' | '!' | '?' | ';' | ':') && !out.is_empty() {
-                        out.push(' ');
-                    }
-                    pending_space = false;
-                }
-                out.push(ch);
-            }
+/// Repair the two artifacts a span removal can leave at its seam, touching
+/// nothing outside the seam's own line: a line left holding only whitespace
+/// is deleted outright, and spaces left dangling before a newline (or end of
+/// text) are trimmed.
+fn clean_seam(output: &mut String, seam: usize) {
+    let line_start = output[..seam].rfind('\n').map_or(0, |i| i + 1);
+    let line_end = output[seam..].find('\n').map_or(output.len(), |i| seam + i);
+    if output[line_start..line_end]
+        .chars()
+        .all(|c| c == ' ' || c == '\t')
+    {
+        let delete_end = if line_end < output.len() {
+            line_end + 1
+        } else {
+            line_end
+        };
+        output.replace_range(line_start..delete_end, "");
+        return;
+    }
+    let bytes = output.as_bytes();
+    let at_line_end = seam == output.len() || bytes[seam] == b'\n';
+    if at_line_end {
+        let mut ws_start = seam;
+        while ws_start > line_start && matches!(bytes[ws_start - 1], b' ' | b'\t') {
+            ws_start -= 1;
+        }
+        if ws_start < seam {
+            output.replace_range(ws_start..seam, "");
         }
     }
-    out.trim_end().trim_start_matches('\n').to_string()
 }
 
 /// ASCII-case-insensitive phrase scan with word-boundary checks on both ends,

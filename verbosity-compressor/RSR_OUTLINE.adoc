@@ -7,7 +7,7 @@
 == Status
 
 This directory is an active project inside the `vexometer` monorepo: the
-first ISA satellite scaffolded from `satellite-template` (owner ruling D6,
+first ISA (formerly Vexometer) satellite scaffolded from `satellite-template` (owner ruling D6,
 2026-09-02). Template boilerplate has been replaced for this project.
 
 == Source Of Truth

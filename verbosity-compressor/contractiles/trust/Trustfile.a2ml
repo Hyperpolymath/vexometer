@@ -36,6 +36,7 @@ runtime:
     - "README.adoc"
     - "ROADMAP.adoc"
     - "SECURITY.adoc"
+    - "contractiles/dust/Dustfile"
     - "contractiles/must/Mustfile"
     - "contractiles/trust/Trustfile.a2ml"
   release_integrity:
