@@ -1,7 +1,7 @@
 # trust-manifest v1
 # component=lazy-eliminator
-# generated_at=2026-09-02T01:16:19Z
-339d25795fa89149354d4101c533492f0e5bbe39fc953ac02be17a225f2fd270  README.adoc
+# generated_at=2026-09-02T06:29:19Z
+55b60de480f04ebccf06fb068930662f6663311c56b16ac00f20d72612b6215a  README.adoc
 6772e621da4e50257728886f568bd652b8e9c58a02aec325112e57def73da46a  ROADMAP.adoc
 504199ed09a9acbd183fe9c37a8330ec254f33f5612e0f36f2f5e7be170a57ff  SECURITY.adoc
 530ba7ca220c8eaee794a163672469e9733dd8cb97c5bd6311d5ca15a3685e99  contractiles/must/Mustfile

@@ -111,7 +111,7 @@ dual licensing, and comprehensive .well-known directory.
 |# |Requirement |Status |Location
 |1 |RSR compliance checker tool |✅ |`+tools/rsr_checker.py+`
 |2 |RSR compliance documentation |✅ |`+RSR_COMPLIANCE.md+` (this file)
-|3 |Palimpsest dual licensing |✅ |`+LICENSE+`
+|3 |Dual licensing: MPL-2.0 (code) + CC-BY-SA-4.0 (docs) |✅ |`+LICENSE+`
 |4 |Complete .well-known directory |✅ |`+.well-known/+`
 |5 |Advanced documentation suite |✅ |Multiple guides (8 files)
 |6 |Nix flakes with full configuration |✅ |`+flake.nix+`
@@ -124,10 +124,9 @@ dual licensing, and comprehensive .well-known directory.
 levels - JSON export for CI/CD integration - Badge generation for README
 - Command-line interface with detailed reporting
 
-*Palimpsest Dual Licensing*: - MPL-2.0 - Clear SPDX identifier:
-`+SPDX-License-Identifier: CC-BY-SA-4.0+` - Comprehensive LICENSE file
-explaining both options - Guidance on when to choose each license -
-Patent grants and trademark notices
+*Dual Licensing*: - MPL-2.0 for code, CC-BY-SA-4.0 for documentation -
+Clear per-file SPDX identifiers - LICENSE carries the full MPL-2.0 text
+- Canonical licence texts in the monorepo root `+LICENSES/+` directory
 
 *Complete .well-known Directory*: - `+security.txt+` - RFC 9116
 compliant security contact - `+ai.txt+` - AI training policy (allowed
@@ -384,7 +383,6 @@ https://github.com/Hyperpolymath/vext/discussions
 
 * https://rhodium.sh[Rhodium Standard Repository] (hypothetical)
 * https://www.rfc-editor.org/rfc/rfc9116.html[RFC 9116: security.txt]
-* https://palimpsest.license[Palimpsest License] (hypothetical)
 * link:governance/PROJECT_GOVERNANCE.md[Tri-Perimeter Contribution
 Framework]
 
@@ -416,7 +414,13 @@ Framework]
 
 ==== Appendix B: SPDX Identifiers
 
-All source files include:
+Code files include:
+
+....
+SPDX-License-Identifier: MPL-2.0
+....
+
+Documentation files include:
 
 ....
 SPDX-License-Identifier: CC-BY-SA-4.0

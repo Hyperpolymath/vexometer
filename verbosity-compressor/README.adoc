@@ -87,14 +87,10 @@ just test    # run the test suite
 just check   # rustfmt + clippy (-D warnings)
 ----
 
-== License & Philosophy
+== License
 
-MPL-2.0 — see link:LICENSE[LICENSE].
-
-Philosophy: *Palimpsest*. The Palimpsest-MPL (PMPL) text is provided in
-`license/PMPL-1.0.txt`; the canonical source is the
-https://github.com/hyperpolymath/palimpsest-license[palimpsest-license]
-repository.
+MPL-2.0 for code — see link:LICENSE[LICENSE]. Documentation is
+CC-BY-SA-4.0.
 
 == Contributing
 

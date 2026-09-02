@@ -27,14 +27,14 @@ echo "✅ Documentation copied"
 # Create basic LICENSE file
 echo "📜 Creating LICENSE file..."
 cat > LICENSE << 'EOL'
-Palimpsest License (MPL-2.0)
+Mozilla Public License Version 2.0
 
 Copyright (c) 2025 Jonathan D.A. Jewell
 
-This software is licensed under the Palimpsest License, version 1.0 or later.
+This software is licensed under the Mozilla Public License, v. 2.0.
 
 For the full license text, see:
-https://github.com/hyperpolymath/palimpsest-license/blob/main/LICENSE-1.0.txt
+https://mozilla.org/MPL/2.0/
 
 SPDX-License-Identifier: MPL-2.0
 EOL

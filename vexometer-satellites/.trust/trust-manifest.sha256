@@ -1,7 +1,7 @@
 # trust-manifest v1
 # component=vexometer-satellites
-# generated_at=2026-09-02T01:16:19Z
-514f49d458056098d755828ec84a3a1efb0d72fbe13d644e0a7082524b2d4f34  README.adoc
+# generated_at=2026-09-02T06:29:19Z
+ffdacd680a0cf764b299b53a8bfe041c8f6b6aac9dbe1b273d718fde8a06e91a  README.adoc
 1aa88e3ef6646aeb9209093c8719198e7d8101773ae02c270664bfc1e299c0a0  ROADMAP.adoc
 1e36494d91d91559cdf1b4937173e14342e00291319ab1ccb75ce56410978fb8  SECURITY.adoc
 d1f96168c1500cdd3a753ce8e31af5b7cdcb21d6474e2956b7c6f6d31f020d41  contractiles/must/Mustfile
