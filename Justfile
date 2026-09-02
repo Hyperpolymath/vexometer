@@ -30,8 +30,12 @@ build-lazy-eliminator:
 build-efficacy:
     cd vexometer-efficacy && cargo build --release
 
+# Build the verbosity compressor (Rust satellite)
+build-verbosity-compressor:
+    cd verbosity-compressor && just build
+
 # Build all components
-build-all: build-vexometer build-vext build-lazy-eliminator build-efficacy
+build-all: build-vexometer build-vext build-lazy-eliminator build-efficacy build-verbosity-compressor
 
 # Run vexometer tests
 test-vexometer:
@@ -53,13 +57,17 @@ test-lazy-eliminator:
 test-efficacy:
     cd vexometer-efficacy && (cargo test --offline || cargo test)
 
+# Run verbosity-compressor tests
+test-verbosity-compressor:
+    cd verbosity-compressor && just test
+
 # vext-email-gateway status check
 test-vext-email-gateway:
     @echo "vext-email-gateway is currently prototype-stage and not part of the required test-all gate."
     @echo "See vext-email-gateway/README.adoc and ROADMAP.adoc for current wiring status."
 
 # Run all tests
-test-all: test-vexometer test-vext test-lazy-eliminator test-efficacy
+test-all: test-vexometer test-vext test-lazy-eliminator test-efficacy test-verbosity-compressor
 
 # Evaluate a satellite run and emit a vexometer-efficacy-v2 report
 efficacy-report *ARGS:
@@ -84,6 +92,7 @@ bench-all: bench-vexometer
 clean:
     cd vext && cargo clean
     cd vexometer-efficacy && cargo clean
+    cd verbosity-compressor && cargo clean
     cd vexometer && just clean || true
     cd lazy-eliminator && just clean || true
 
@@ -91,11 +100,13 @@ clean:
 fmt-check:
     cd vext && cargo fmt -- --check
     cd vexometer-efficacy && cargo fmt -- --check
+    cd verbosity-compressor && cargo fmt -- --check
 
 # Run clippy on Rust components
 lint:
     cd vext && cargo clippy -- -D warnings
     cd vexometer-efficacy && cargo clippy --all-targets -- -D warnings
+    cd verbosity-compressor && cargo clippy --all-targets -- -D warnings
 
 # Run contractiles Mustfile invariants across all components
 must-all:
