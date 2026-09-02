@@ -10,6 +10,7 @@ components=(
   "vexometer-satellites"
   "lazy-eliminator"
   "vexometer-efficacy"
+  "verbosity-compressor"
   "satellite-template"
 )
 

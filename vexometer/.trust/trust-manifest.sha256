@@ -1,10 +1,11 @@
 # trust-manifest v1
 # component=vexometer
-# generated_at=2026-09-01T23:29:45Z
+# generated_at=2026-09-02T01:16:19Z
 a0a0bd752f3f42324813e305648ee4a248b664516b17ef89e05d51b302f7765f  README.adoc
 394cb48ee253a28d448761e0714f26af0a38cb8ec408968d1220419b1035b3e7  ROADMAP.adoc
 f4358bff9ed297a634d7cef1d5efcc059de238d3bf6a73abd11f9e7910785d61  SECURITY.adoc
 29db6e0287244a2668bc3a143c8b81a54a9ae762b98cd9683ee4c7b203a1cb8e  contractiles/must/Mustfile
 5f5e879cc11595c1f4228c41f3bbde5177584316d60f695211b7812b8de0565e  contractiles/trust/Trustfile.a2ml
+0c78e02a5625fb5ddfc5dcc39e4cda939852ce5b92acb88b30cf9e7472b4134f  contractiles/dust/Dustfile
 3d4f9ee78b526a6a417bf0cd51a32ff8e156279a80e31ade369161b3a5136844  RSR_OUTLINE.adoc
 2db573d850fc0c599b20d290a0e6cade9854bf0b3bcd76d8d9322b07f77ad6f8  docs/CITATIONS.adoc

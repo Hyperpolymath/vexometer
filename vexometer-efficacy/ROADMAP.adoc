@@ -23,8 +23,10 @@
 
 == Later
 
-* [ ] Wire into satellite CI once the first satellite exists (D6 —
-  owner-scoped decision)
+* [ ] Wire into satellite CI now that the first satellite exists (D6
+  ruled 2026-09-02: `verbosity-compressor/`, scaffolded from
+  `satellite-template`; evaluation still blocked on the f1
+  scenario-partition precondition)
 * [ ] Frontier dashboard feed (ten small multiples) from
   `frontier/*.json`
 * [ ] Statistical hardening: bootstrap CIs on `gap_closed` when
